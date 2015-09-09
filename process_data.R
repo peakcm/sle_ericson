@@ -22,6 +22,11 @@ names(data_admin3) <- c("Chief_From", "Chief_To",  dates)
 
 data_admin3$cum_trips <- apply(data_admin3[,3:ncol(data_admin3)], 1, sum)
 
+#### Country-wide maps ####
+
+#### Country-wide temporal series ####
+
+
 #### Tonkolili Plots ####
 # Focus on Kholifa Rowala Chiefdom (2505) in Tonkolili District
 
@@ -32,10 +37,6 @@ plot(data_admin3[data_admin3$Chief_From == 2505, "cum_trips"], main = "Trips fro
 #Split data into before and after case detection
 date.tonk <- as.numeric(as.Date(c("07/24/2015"), format = "%m/%d/%Y"))
 plot(data_admin3[data_admin3$Chief_From == 2505, "cum_trips"], main = "Trips from Tonkolili")
-
-
-
-
 
 # Pie chart (Chiefdoms)
 layout(t(c(1,2)))
