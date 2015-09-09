@@ -9,6 +9,17 @@ library(maptools)
 require(chron)
 library(spdep)
 
+#### Tasks ####
+# Check if there are towers in the chiefdoms that don't get any travel. Especially near Tonkolili and Kambia
+# What proportion of chiefdoms have towers in them?
+# Look at temporal trends for the whole country
+# Create map of main transportation movements
+# Look at number of trips during quarantine days compared to non
+  # Before and after for Tonkolili (July 24)
+  # Three saturdays (April 4, 11, 18) nationally
+  # "three days stay at home" March 27-29 nationally
+  # before and after schools reopen (April 14)
+
 #### Read Data ####
 setwd("/Users/peakcm/Documents/SLE_Mobility/sle_ericson")
 data_admin3 <- read.csv(file = "IndivMvtBtwnAdmin3DaySep1Agg.csv")
@@ -23,6 +34,20 @@ names(data_admin3) <- c("Chief_From", "Chief_To",  dates)
 data_admin3$cum_trips <- apply(data_admin3[,3:ncol(data_admin3)], 1, sum)
 
 #### Country-wide maps ####
+# Create a map of all the tower locations
+work.dir <- "/Users/peakcm/Documents/SLE_Mobility/data"
+towers.admin3 <- readOGR(work.dir, layer = 'Towers_Admin_1_2_3')
+towers.admin3.df <- data.frame(towers.admin3)
+plot(towers.admin3, col="blue", pch = 17, add=T)
+towers.admin3.fort <- fortify(towers.admin3, region = "CHCODE")
+admin3.sp.fort$CHCODE <- as.numeric(admin3.sp.fort$id)
+
+
+#### Find Chiefdoms without towers ####
+?point.in.polygon
+point.in.polygon(x = towers.admin3.df[1,"Lat"], y = towers.admin3.df[1,"Long"],)
+
+
 
 #### Country-wide temporal series ####
 
@@ -118,33 +143,37 @@ for (row in 1:nrow(admin3.sp.fort)){
   }
 }
 
-ggplot(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(from_tonk+1), group = group)) +
-  geom_polygon(colour = "darkgrey") +
-  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2505,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow") +
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(from_tonk+1), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2505,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
   coord_equal() +
   theme_bw() + ggtitle("Destinations from Kholifa Rowala, Tonkolili") +
-  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white")
+  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white") +
+  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
 
-ggplot(data = admin3.sp.fort, aes(x = long, y = lat, fill = from_tonk/sum(tonk$from_tonk), group = group)) +
-  geom_polygon(colour = "darkgrey") +
-  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2505,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow") +
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = from_tonk/sum(tonk$from_tonk), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2505,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
   coord_equal() +
   theme_bw() + ggtitle("Destinations from Kholifa Rowala, Tonkolili") +
-  scale_fill_continuous(name = "Proportion of Trips", low = "white")
+  scale_fill_continuous(name = "Proportion of Trips", low = "white") +
+  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
 
-ggplot(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(to_tonk+1), group = group)) +
-  geom_polygon(colour = "darkgrey") +
-  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2505,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow") +
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(to_tonk+1), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2505,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
   coord_equal() +
   theme_bw() + ggtitle("Sources to Kholifa Rowala, Tonkolili") +
-  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white")
+  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white") +
+  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
 
-ggplot(data = admin3.sp.fort, aes(x = long, y = lat, fill = to_tonk/sum(tonk$to_tonk), group = group)) +
-  geom_polygon(colour = "darkgrey") +
-  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2505,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow") +
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = to_tonk/sum(tonk$to_tonk), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2505,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
   coord_equal() +
   theme_bw() + ggtitle("Sources to Kholifa Rowala, Tonkolili") +
-  scale_fill_continuous(name = "Proportion of Trips", low = "white")
+  scale_fill_continuous(name = "Proportion of Trips", low = "white") +
+  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
 
 #### Kambia Plots ####
 # Focus on Tonko Limba Chiefdom (2207) in Kambia District
@@ -236,31 +265,35 @@ for (row in 1:nrow(admin3.sp.fort)){
   }
 }
 
-ggplot(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(from_kambia+1), group = group)) +
-  geom_polygon(colour = "darkgrey") +
-  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2207,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow") +
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(from_kambia+1), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2207,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
   coord_equal() +
   theme_bw() + ggtitle("Destinations from Tonko Limba, Kambia") +
-  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white")
+  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white") +
+  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
 
-ggplot(data = admin3.sp.fort, aes(x = long, y = lat, fill = from_kambia/sum(kambia$from_kambia), group = group)) +
-  geom_polygon(colour = "darkgrey") +
-  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2207,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow") +
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = from_kambia/sum(kambia$from_kambia), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2207,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
   coord_equal() +
   theme_bw() + ggtitle("Destinations from Tonko Limba, Kambia") +
-  scale_fill_continuous(name = "Proportion of Trips", low = "white")
+  scale_fill_continuous(name = "Proportion of Trips", low = "white") +
+  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
 
-ggplot(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(to_kambia+1), group = group)) +
-  geom_polygon(colour = "darkgrey") +
-  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2207,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow") +
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(to_kambia+1), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2207,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
   coord_equal() +
   theme_bw() + ggtitle("Sources to Tonko Limba, Kambia") +
-  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white")
+  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white")+
+  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
 
-ggplot(data = admin3.sp.fort, aes(x = long, y = lat, fill = to_kambia/sum(kambia$to_kambia), group = group)) +
-  geom_polygon(colour = "darkgrey") +
-  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2207,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow") +
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = to_kambia/sum(kambia$to_kambia), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2207,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
   coord_equal() +
   theme_bw() + ggtitle("Sources to Tonko Limba, Kambia") +
-  scale_fill_continuous(name = "Proportion of Trips", low = "white")
+  scale_fill_continuous(name = "Proportion of Trips", low = "white") +
+  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
 
