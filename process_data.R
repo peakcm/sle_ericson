@@ -16,7 +16,7 @@ library(spdep)
 #### Tasks ####
 # Check if there are towers in the chiefdoms that don't get any travel. Especially near Tonkolili and Kambia
   # What proportion of chiefdoms have towers in them?
-  # Why are towers near Bo and other places not counted inside that chiefdom? Problem is that the towns (1291,1391,2191,3191)
+  # Why are towers near Bo and other places not counted inside that chiefdom? Problem is that the towns (1291,1391,2191,3191,3291)
 # Look at temporal trends for the whole country
 # Create map of main transportation movements
 # Look at number of trips during quarantine days compared to non
@@ -39,41 +39,48 @@ dates <- seq(from = date.start, to = date.start + ncol(data_admin3) - 3)
 names(data_admin3) <- c("Chief_From", "Chief_To",  dates)
 data_admin3$cum_trips <- apply(data_admin3[,3:ncol(data_admin3)], 1, sum)
 
+# Create a dataset for the tower locations provided to us by Ericsson
+setwd("/Users/peakcm/Documents/SLE_Mobility/data")
+towers <- read.csv(file = "Tower_Locations.csv")
+towers$CHCODE <- towers$admin3
+towers.fort <- fortify(towers, region = admin3)
+
 # Add city CHCODES to the encompassing polygon
 data_admin3[data_admin3$Chief_From == 1291, "Chief_From"] <- 1212
 data_admin3[data_admin3$Chief_To == 1291, "Chief_To"] <- 1212
+towers[towers$CHCODE == 1291,"CHCODE"] <- 1212
 
 data_admin3[data_admin3$Chief_From == 1391, "Chief_From"] <- 1313
 data_admin3[data_admin3$Chief_To == 1391, "Chief_To"] <- 1313
+towers[towers$CHCODE == 1391,"CHCODE"] <- 1313
 
 data_admin3[data_admin3$Chief_To == 2191, "Chief_To"] <- 2102
 data_admin3[data_admin3$Chief_From == 2191, "Chief_From"] <- 2102
+towers[towers$CHCODE == 2191,"CHCODE"] <- 2102
 
 data_admin3[data_admin3$Chief_From == 3191, "Chief_From"] <- 3108
 data_admin3[data_admin3$Chief_To == 3191, "Chief_To"] <- 3108
+towers[towers$CHCODE == 3191,"CHCODE"] <- 3108
+
+data_admin3[data_admin3$Chief_From == 3291, "Chief_From"] <- 3209
+data_admin3[data_admin3$Chief_To == 3291, "Chief_To"] <- 3209
+towers[towers$CHCODE == 3291,"CHCODE"] <- 3209
 
 # Combine some Freetown towers into the encompassing polygon
 data_admin3[data_admin3$Chief_From == 4201, "Chief_From"] <- 4208
 data_admin3[data_admin3$Chief_To == 4201, "Chief_To"] <- 4208
+towers[towers$CHCODE == 4201,"CHCODE"] <- 4208
 
 data_admin3[data_admin3$Chief_From == 4202, "Chief_From"] <- 4208
 data_admin3[data_admin3$Chief_To == 4202, "Chief_To"] <- 4208
+towers[towers$CHCODE == 4202,"CHCODE"] <- 4208
 
 data_admin3[data_admin3$Chief_From == 4206, "Chief_From"] <- 4208
 data_admin3[data_admin3$Chief_To == 4206, "Chief_To"] <- 4208
 
 data_admin3[data_admin3$Chief_From == 4207, "Chief_From"] <- 4208
 data_admin3[data_admin3$Chief_To == 4207, "Chief_To"] <- 4208
-
-# Create a dataset for the tower locations provided to us by Ericsson
-setwd("/Users/peakcm/Documents/SLE_Mobility/data")
-towers <- read.csv(file = "Tower_Locations.csv")
-towers.fort <- fortify(towers, region = admin3)
-
-# Create a dataset for the tower locations with CHCODE assignments
-work.dir <- "/Users/peakcm/Documents/SLE_Mobility/data"
-towers.admin3 <- readOGR(work.dir, layer = 'Towers_Admin_1_2_3')
-towers.admin3.df <- data.frame(towers.admin3)
+towers[towers$CHCODE == 4207,"CHCODE"] <- 4208
 
 # Create a shapefile for Sierra Leone Admin 3
 work.dir <- "/Users/peakcm/Documents/SLE_Mobility/Arc GIS/Open Humanitarian Data Repository/Sierra Leone Chiefdoms SLGov Admin_3 2012"
@@ -171,7 +178,7 @@ ggplot() +
   coord_equal() +
   theme_bw() + ggtitle("Destinations from Kholifa Rowala, Tonkolili") +
   scale_fill_continuous(name = "Log10(Number of Trips)", low = "white") +
-  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1)
 
 ggplot() +
   geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = from_tonk/sum(tonk$from_tonk), group = group), colour = "darkgrey") +
@@ -179,7 +186,7 @@ ggplot() +
   coord_equal() +
   theme_bw() + ggtitle("Destinations from Kholifa Rowala, Tonkolili") +
   scale_fill_continuous(name = "Proportion of Trips", low = "white") +
-  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1)
 
 ggplot() +
   geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(to_tonk+1), group = group), colour = "darkgrey") +
@@ -187,7 +194,7 @@ ggplot() +
   coord_equal() +
   theme_bw() + ggtitle("Sources to Kholifa Rowala, Tonkolili") +
   scale_fill_continuous(name = "Log10(Number of Trips)", low = "white") +
-  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1)
 
 ggplot() +
   geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = to_tonk/sum(tonk$to_tonk), group = group), colour = "darkgrey") +
@@ -195,7 +202,7 @@ ggplot() +
   coord_equal() +
   theme_bw() + ggtitle("Sources to Kholifa Rowala, Tonkolili") +
   scale_fill_continuous(name = "Proportion of Trips", low = "white") +
-  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1)
 
 #### Kambia Plots ####
 # Focus on Tonko Limba Chiefdom (2207) in Kambia District
@@ -285,7 +292,7 @@ ggplot() +
   coord_equal() +
   theme_bw() + ggtitle("Destinations from Tonko Limba, Kambia") +
   scale_fill_continuous(name = "Log10(Number of Trips)", low = "white") +
-  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1)
 
 ggplot() +
   geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = from_kambia/sum(kambia$from_kambia), group = group), colour = "darkgrey") +
@@ -293,7 +300,7 @@ ggplot() +
   coord_equal() +
   theme_bw() + ggtitle("Destinations from Tonko Limba, Kambia") +
   scale_fill_continuous(name = "Proportion of Trips", low = "white") +
-  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1)
 
 ggplot() +
   geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(to_kambia+1), group = group), colour = "darkgrey") +
@@ -301,7 +308,7 @@ ggplot() +
   coord_equal() +
   theme_bw() + ggtitle("Sources to Tonko Limba, Kambia") +
   scale_fill_continuous(name = "Log10(Number of Trips)", low = "white")+
-  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1)
 
 ggplot() +
   geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = to_kambia/sum(kambia$to_kambia), group = group), colour = "darkgrey") +
@@ -309,20 +316,29 @@ ggplot() +
   coord_equal() +
   theme_bw() + ggtitle("Sources to Tonko Limba, Kambia") +
   scale_fill_continuous(name = "Proportion of Trips", low = "white") +
-  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1)
 
 #### Find Chiefdoms without towers ####
 length(unique(data_admin3$Chief_From))
-length(unique(towers$admin3))
+length(unique(towers$CHCODE))
 
 ggplot() +
   geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(from_tonk+1), group = group), colour = "darkgrey") +
-  geom_polygon(data = admin3.sp.fort[is.element(admin3.sp.fort$CHCODE, towers$admin3)==0,], aes(x = long, y = lat, group = group), size=1.2, fill = "lightgrey") +
+  geom_polygon(data = admin3.sp.fort[is.element(admin3.sp.fort$CHCODE, towers$CHCODE)==0,], aes(x = long, y = lat, group = group), size=1.2, fill = "lightgrey") +
   geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2505,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
   coord_equal() +
   theme_bw() + ggtitle("Destinations from Kholifa Rowala, Tonkolili") +
   scale_fill_continuous(name = "Log10(Number of Trips)", low = "white") +
-  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1)
+
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(from_kambia+1), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[is.element(admin3.sp.fort$CHCODE, towers$CHCODE)==0,], aes(x = long, y = lat, group = group), size=1.2, fill = "lightgrey") +
+  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2207,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
+  coord_equal() +
+  theme_bw() + ggtitle("Destinations from Tonko Limba, Kambia") +
+  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white") +
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1)
 
 #### Country-wide maps ####
 # Create a map of all the tower locations
