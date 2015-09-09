@@ -1,3 +1,7 @@
+#### Load or Save Workspace ####
+# save.image("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/process_data.RData")
+# load("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/process_data.RData")
+
 #### Libraries ####
 library(ggplot2)
 library(spatial)
@@ -11,7 +15,8 @@ library(spdep)
 
 #### Tasks ####
 # Check if there are towers in the chiefdoms that don't get any travel. Especially near Tonkolili and Kambia
-# What proportion of chiefdoms have towers in them?
+  # What proportion of chiefdoms have towers in them?
+  # Why are towers near Bo and other places not counted inside that chiefdom? Problem is that the towns (1291,1391,2191,3191)
 # Look at temporal trends for the whole country
 # Create map of main transportation movements
 # Look at number of trips during quarantine days compared to non
@@ -21,36 +26,61 @@ library(spdep)
   # before and after schools reopen (April 14)
 
 #### Read Data ####
+# Create a dataset for the Admin 2 Trips
+setwd("/Users/peakcm/Documents/SLE_Mobility/sle_ericson")
+data_admin2 <- read.csv(file = "IndivMvtBtwnAdmin2DaySep1Agg.csv")
+
+# Create a dataset for the Admin 3 Trips
 setwd("/Users/peakcm/Documents/SLE_Mobility/sle_ericson")
 data_admin3 <- read.csv(file = "IndivMvtBtwnAdmin3DaySep1Agg.csv")
-data_admin2 <- read.csv(file = "IndivMvtBtwnAdmin2DaySep1Agg.csv")
 
 date.start <- as.numeric(as.Date(c("03/20/2015"), format = "%m/%d/%Y"))
 dates <- seq(from = date.start, to = date.start + ncol(data_admin3) - 3)
-
 names(data_admin3) <- c("Chief_From", "Chief_To",  dates)
-# data_admin3$Chief_To <- as.numeric(data_admin3$Chief_To)
-
 data_admin3$cum_trips <- apply(data_admin3[,3:ncol(data_admin3)], 1, sum)
 
-#### Country-wide maps ####
-# Create a map of all the tower locations
+# Add city CHCODES to the encompassing polygon
+data_admin3[data_admin3$Chief_From == 1291, "Chief_From"] <- 1212
+data_admin3[data_admin3$Chief_To == 1291, "Chief_To"] <- 1212
+
+data_admin3[data_admin3$Chief_From == 1391, "Chief_From"] <- 1313
+data_admin3[data_admin3$Chief_To == 1391, "Chief_To"] <- 1313
+
+data_admin3[data_admin3$Chief_To == 2191, "Chief_To"] <- 2102
+data_admin3[data_admin3$Chief_From == 2191, "Chief_From"] <- 2102
+
+data_admin3[data_admin3$Chief_From == 3191, "Chief_From"] <- 3108
+data_admin3[data_admin3$Chief_To == 3191, "Chief_To"] <- 3108
+
+# Combine some Freetown towers into the encompassing polygon
+data_admin3[data_admin3$Chief_From == 4201, "Chief_From"] <- 4208
+data_admin3[data_admin3$Chief_To == 4201, "Chief_To"] <- 4208
+
+data_admin3[data_admin3$Chief_From == 4202, "Chief_From"] <- 4208
+data_admin3[data_admin3$Chief_To == 4202, "Chief_To"] <- 4208
+
+data_admin3[data_admin3$Chief_From == 4206, "Chief_From"] <- 4208
+data_admin3[data_admin3$Chief_To == 4206, "Chief_To"] <- 4208
+
+data_admin3[data_admin3$Chief_From == 4207, "Chief_From"] <- 4208
+data_admin3[data_admin3$Chief_To == 4207, "Chief_To"] <- 4208
+
+# Create a dataset for the tower locations provided to us by Ericsson
+setwd("/Users/peakcm/Documents/SLE_Mobility/data")
+towers <- read.csv(file = "Tower_Locations.csv")
+towers.fort <- fortify(towers, region = admin3)
+
+# Create a dataset for the tower locations with CHCODE assignments
 work.dir <- "/Users/peakcm/Documents/SLE_Mobility/data"
 towers.admin3 <- readOGR(work.dir, layer = 'Towers_Admin_1_2_3')
 towers.admin3.df <- data.frame(towers.admin3)
-plot(towers.admin3, col="blue", pch = 17, add=T)
-towers.admin3.fort <- fortify(towers.admin3, region = "CHCODE")
+
+# Create a shapefile for Sierra Leone Admin 3
+work.dir <- "/Users/peakcm/Documents/SLE_Mobility/Arc GIS/Open Humanitarian Data Repository/Sierra Leone Chiefdoms SLGov Admin_3 2012"
+admin3.sp <- readOGR(work.dir, layer = 'Sierra_Leone_Chiefdoms_SLGov_Admin_3_2012')
+admin3.sp <- admin3.sp[admin3.sp$CHCODE > 0,]
+admin3.sp.fort <- fortify(admin3.sp, region = "CHCODE")
 admin3.sp.fort$CHCODE <- as.numeric(admin3.sp.fort$id)
-
-
-#### Find Chiefdoms without towers ####
-?point.in.polygon
-point.in.polygon(x = towers.admin3.df[1,"Lat"], y = towers.admin3.df[1,"Long"],)
-
-
-
-#### Country-wide temporal series ####
-
 
 #### Tonkolili Plots ####
 # Focus on Kholifa Rowala Chiefdom (2505) in Tonkolili District
@@ -61,7 +91,7 @@ plot(data_admin3[data_admin3$Chief_From == 2505, "cum_trips"], main = "Trips fro
 
 #Split data into before and after case detection
 date.tonk <- as.numeric(as.Date(c("07/24/2015"), format = "%m/%d/%Y"))
-plot(data_admin3[data_admin3$Chief_From == 2505, "cum_trips"], main = "Trips from Tonkolili")
+# plot(data_admin3[data_admin3$Chief_From == 2505, "cum_trips"], main = "Trips from Tonkolili")
 
 # Pie chart (Chiefdoms)
 layout(t(c(1,2)))
@@ -109,14 +139,6 @@ ggplot(data=data_Tonk_districts) +
   theme_bw()
 
 #### Spatial for Tonkolili ####
-layout(c(1))
-work.dir <- "/Users/peakcm/Documents/2014 Cholera OCV/Data - Raw/GIS Shapefiles/Shapefiles/Admin 3"
-
-admin3.sp <- readOGR(work.dir, layer = 'SLE_Adm3_1m_gov')
-admin3.sp <- admin3.sp[admin3.sp$CHCODE > 0,]
-admin3.sp.fort <- fortify(admin3.sp, region = "CHCODE")
-admin3.sp.fort$CHCODE <- as.numeric(admin3.sp.fort$id)
-
 tonk <- data.frame(matrix(rep(NA, nrow(admin3.sp)*3), ncol=3))
 names(tonk) <- c("CHCODE", "from_tonk", "to_tonk")
 for (row in 1:nrow(admin3.sp)){
@@ -231,14 +253,6 @@ ggplot(data=data_kambia_districts) +
   theme_bw()
 
 #### Spatial for Kambia ####
-layout(c(1))
-work.dir <- "/Users/peakcm/Documents/2014 Cholera OCV/Data - Raw/GIS Shapefiles/Shapefiles/Admin 3"
-
-admin3.sp <- readOGR(work.dir, layer = 'SLE_Adm3_1m_gov')
-admin3.sp <- admin3.sp[admin3.sp$CHCODE > 0,]
-admin3.sp.fort <- fortify(admin3.sp, region = "CHCODE")
-admin3.sp.fort$CHCODE <- as.numeric(admin3.sp.fort$id)
-
 kambia <- data.frame(matrix(rep(NA, nrow(admin3.sp)*3), ncol=3))
 names(kambia) <- c("CHCODE", "from_kambia", "to_kambia")
 for (row in 1:nrow(admin3.sp)){
@@ -297,3 +311,21 @@ ggplot() +
   scale_fill_continuous(name = "Proportion of Trips", low = "white") +
   geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
 
+#### Find Chiefdoms without towers ####
+length(unique(data_admin3$Chief_From))
+length(unique(towers$admin3))
+
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(from_tonk+1), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[is.element(admin3.sp.fort$CHCODE, towers$admin3)==0,], aes(x = long, y = lat, group = group), size=1.2, fill = "lightgrey") +
+  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2505,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
+  coord_equal() +
+  theme_bw() + ggtitle("Destinations from Kholifa Rowala, Tonkolili") +
+  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white") +
+  geom_point(data=towers.admin3.df, aes(x=Long, y=Lat ), color="black", size=1)
+
+#### Country-wide maps ####
+# Create a map of all the tower locations
+
+
+#### Country-wide temporal series ####
