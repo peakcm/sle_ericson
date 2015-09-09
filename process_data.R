@@ -12,11 +12,11 @@ library(rgdal)
 library(maptools)
 require(chron)
 library(spdep)
+library(maps)
+library(geosphere)
+library(RColorBrewer)
 
 #### Tasks ####
-# Check if there are towers in the chiefdoms that don't get any travel. Especially near Tonkolili and Kambia
-  # What proportion of chiefdoms have towers in them?
-  # Why are towers near Bo and other places not counted inside that chiefdom? Problem is that the towns (1291,1391,2191,3191,3291)
 # Look at temporal trends for the whole country
 # Create map of main transportation movements
 # Look at number of trips during quarantine days compared to non
@@ -86,7 +86,11 @@ towers[towers$CHCODE == 4207,"CHCODE"] <- 4208
 work.dir <- "/Users/peakcm/Documents/SLE_Mobility/Arc GIS/Open Humanitarian Data Repository/Sierra Leone Chiefdoms SLGov Admin_3 2012"
 admin3.sp <- readOGR(work.dir, layer = 'Sierra_Leone_Chiefdoms_SLGov_Admin_3_2012')
 admin3.sp <- admin3.sp[admin3.sp$CHCODE > 0,]
-admin3.sp.fort <- fortify(admin3.sp, region = "CHCODE")
+centroids <- data.frame(getSpPPolygonsLabptSlots(admin3.sp))
+names(centroids) <- c("Long", "Lat")
+admin3.sp <- spCbind(admin3.sp, centroids$Long)
+admin3.sp <- spCbind(admin3.sp, centroids$Lat)
+admin3.sp.fort <- fortify(admin3.sp, region = "CHCODE", )
 admin3.sp.fort$CHCODE <- as.numeric(admin3.sp.fort$id)
 
 #### Tonkolili Plots ####
@@ -341,7 +345,95 @@ ggplot() +
   geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1)
 
 #### Country-wide maps ####
-# Create a map of all the tower locations
 
+# Map of number of trips from each chiefdom
+admin3.sp.fort$trips_from <- NA
+admin3.sp.fort$trips_to <- NA
+
+for (chief in unique(admin3.sp.fort$CHCODE)){
+  admin3.sp.fort[admin3.sp.fort$CHCODE == chief, "trips_from"] <- sum(data_admin3[data_admin3$Chief_From == chief,"cum_trips"]) 
+  admin3.sp.fort[admin3.sp.fort$CHCODE == chief, "trips_to"] <- sum(data_admin3[data_admin3$Chief_To == chief,"cum_trips"]) 
+}
+
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(trips_from+1), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[is.element(admin3.sp.fort$CHCODE, towers$CHCODE)==0,], aes(x = long, y = lat, group = group), size=1.2, fill = "lightgrey") +
+  coord_equal() +
+  theme_bw() + ggtitle("Cumulative Trips From Each Chiefdom") +
+  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white") +
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1)
+
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(trips_to+1), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[is.element(admin3.sp.fort$CHCODE, towers$CHCODE)==0,], aes(x = long, y = lat, group = group), size=1.2, fill = "lightgrey") +
+  coord_equal() +
+  theme_bw() + ggtitle("Cumulative Trips To Each Chiefdom") +
+  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white") +
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1)
+
+# Map all connections
+layout(c(1))
+plot(admin3.sp)
+
+for (row in 1:nrow(data_admin3)){
+  from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
+  to <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_To"])
+  
+  lon_1 <- admin3.sp$centroids.Long[from]
+  lat_1 <- admin3.sp$centroids.Lat[from]
+  lon_2 <- admin3.sp$centroids.Long[to]
+  lat_2 <- admin3.sp$centroids.Lat[to]
+  inter <- gcIntermediate(c(lon_1, lat_1), c(lon_2, lat_2), n=50, addStartEnd=TRUE)
+  lines(inter)
+}
+
+# Shade connections by weight
+data_admin3 <- data_admin3[order(data_admin3$cum_trips),] #sort so the heavier connections are drawn later
+
+colors <- colorRampPalette(brewer.pal(9,"Blues"))(100)
+
+range <- max(data_admin3$cum_trips)
+  
+layout(c(1))
+plot(admin3.sp)
+
+for (row in 1:nrow(data_admin3)){
+  from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
+  to <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_To"])
+  
+  lon_1 <- admin3.sp$centroids.Long[from]
+  lat_1 <- admin3.sp$centroids.Lat[from]
+  lon_2 <- admin3.sp$centroids.Long[to]
+  lat_2 <- admin3.sp$centroids.Lat[to]
+  inter <- gcIntermediate(c(lon_1, lat_1), c(lon_2, lat_2), n=50, addStartEnd=TRUE)
+  
+  colindex <- colors[ceiling(data_admin3[row,"cum_trips"] / range * 100)]
+  lines(inter, col = colindex, lwd = 0.8)
+}
+
+# Shade connections weighted by log of count, only plot top 2.5%
+data_admin3 <- data_admin3[order(data_admin3$cum_trips),] #sort so the heavier connections are drawn later
+
+start <- round(nrow(data_admin3)*0.5)
+range <- max(log(data_admin3$cum_trips))
+colors <- colorRampPalette(brewer.pal(9,"Blues"))(100)
+
+# dev.off()
+layout(c(1))
+plot(admin3.sp)
+for (row in start:nrow(data_admin3)){
+  from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
+  to <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_To"])
+  
+  lon_1 <- admin3.sp$centroids.Long[from]
+  lat_1 <- admin3.sp$centroids.Lat[from]
+  lon_2 <- admin3.sp$centroids.Long[to]
+  lat_2 <- admin3.sp$centroids.Lat[to]
+  inter <- gcIntermediate(c(lon_1, lat_1), c(lon_2, lat_2), n=50, addStartEnd=TRUE)
+  
+  weight <- ceiling(log(data_admin3[row,"cum_trips"]) / range * 100) / 100
+    
+  lines(inter, col = colors[weight*100], lwd = 3*weight^2)
+}
 
 #### Country-wide temporal series ####
