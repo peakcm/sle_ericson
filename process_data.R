@@ -436,5 +436,71 @@ for (row in start:nrow(data_admin3)){
     
   lines(inter, col = colors[weight*100], lwd = 3*weight^2)
 }
+points(towers.fort$Long, towers.fort$Lat)
+
+# Travel from Freetown. shade connections weighted by log of count
+# dev.off()
+layout(c(1))
+plot(admin3.sp)
+for (row in 1:nrow(data_admin3)){
+  from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
+  to <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_To"])
+  
+  if (data_admin3[row, "Chief_From"] > 4100){
+    lon_1 <- admin3.sp$centroids.Long[from]
+    lat_1 <- admin3.sp$centroids.Lat[from]
+    lon_2 <- admin3.sp$centroids.Long[to]
+    lat_2 <- admin3.sp$centroids.Lat[to]
+    inter <- gcIntermediate(c(lon_1, lat_1), c(lon_2, lat_2), n=50, addStartEnd=TRUE)
+  }
+  
+  weight <- ceiling(log(data_admin3[row,"cum_trips"]) / range * 100) / 100
+  
+  lines(inter, col = colors[weight*100], lwd = 3*weight^2)
+}
+
+# Travel from Bo Town shade connections weighted by log of count
+# dev.off()
+layout(c(1))
+plot(admin3.sp)
+for (row in 1:nrow(data_admin3)){
+  from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
+  to <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_To"])
+  
+  if (data_admin3[row, "Chief_From"] == 3108){
+    lon_1 <- admin3.sp$centroids.Long[from]
+    lat_1 <- admin3.sp$centroids.Lat[from]
+    lon_2 <- admin3.sp$centroids.Long[to]
+    lat_2 <- admin3.sp$centroids.Lat[to]
+    inter <- gcIntermediate(c(lon_1, lat_1), c(lon_2, lat_2), n=50, addStartEnd=TRUE)
+  }
+  
+  weight <- ceiling(log(data_admin3[row,"cum_trips"]) / range * 100) / 100
+  
+  lines(inter, col = colors[weight*100], lwd = 3*weight^2)
+}
+
+# Travel from Kenema Town. shade connections weighted by log of count
+# dev.off()
+layout(c(1))
+plot(admin3.sp)
+for (row in 1:nrow(data_admin3)){
+  from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
+  to <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_To"])
+  
+  if (data_admin3[row, "Chief_From"] == 1212){
+    lon_1 <- admin3.sp$centroids.Long[from]
+    lat_1 <- admin3.sp$centroids.Lat[from]
+    lon_2 <- admin3.sp$centroids.Long[to]
+    lat_2 <- admin3.sp$centroids.Lat[to]
+    inter <- gcIntermediate(c(lon_1, lat_1), c(lon_2, lat_2), n=50, addStartEnd=TRUE)
+  }
+  
+  weight <- ceiling(log(data_admin3[row,"cum_trips"]) / range * 100) / 100
+  
+  lines(inter, col = colors[weight*100], lwd = 3*weight^2)
+}
 
 #### Country-wide temporal series ####
+data_admin3.melt <- melt(data_admin3, )
+
