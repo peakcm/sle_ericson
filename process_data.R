@@ -15,15 +15,14 @@ library(spdep)
 library(maps)
 library(geosphere)
 library(RColorBrewer)
+library(reshape2)
 
 #### Tasks ####
-# Look at temporal trends for the whole country
-# Create map of main transportation movements
 # Look at number of trips during quarantine days compared to non
   # Before and after for Tonkolili (July 24)
-  # Three saturdays (April 4, 11, 18) nationally
-  # "three days stay at home" March 27-29 nationally
-  # before and after schools reopen (April 14)
+  # Three saturdays (April 4, 11, 18) nationally. Result: Strong signal
+  # "three days stay at home" March 27-29 nationally. Result: signal is not very strong except on first day
+  # before and after schools reopen (April 14). Result: no national signal.
 
 #### Read Data ####
 # Create a dataset for the Admin 2 Trips
@@ -502,5 +501,134 @@ for (row in 1:nrow(data_admin3)){
 }
 
 #### Country-wide temporal series ####
-data_admin3.melt <- melt(data_admin3, )
+
+# Melt data_admin3 call data
+data_admin3.melt <- melt(data_admin3, id = c("Chief_From", "Chief_To"))
+
+# Create a dataset with the cumulative trips on each day
+data_admin3.daily <- data.frame(matrix(rep(NA, 2*(ncol(data_admin3)-3)), ncol=2))
+names(data_admin3.daily) <- c("day", "cum_trips")
+data_admin3.daily$day <- names(data_admin3)[3:(ncol(data_admin3)-1)]
+
+for (row in 1:nrow(data_admin3.daily)){
+  data_admin3.daily[row, "cum_trips"] <- sum(data_admin3.melt[data_admin3.melt$variable == data_admin3.daily[row, "day"],"value"])
+}
+data_admin3.daily$weekday <- c(rep(c("Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"), times = floor(nrow(data_admin3.daily)/7)), c("Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday"))
+tail(data_admin3.daily)
+
+ggplot(data = data_admin3.daily) +
+  # "three days stay at home" March 27-29 nationally
+  annotate("rect", xmin = as.numeric(as.Date(c("03/27/2015"), format = "%m/%d/%Y")) - 0.5,
+           xmax = as.numeric(as.Date(c("03/29/2015"), format = "%m/%d/%Y")) + 0.5,
+           ymin = 0, ymax = max(data_admin3.daily$cum_trips), alpha = .2) +
+  # Three saturdays (April 4, 11, 18)
+  annotate("rect", xmin = as.numeric(as.Date(c("04/04/2015"), format = "%m/%d/%Y")) - 0.5,
+           xmax = as.numeric(as.Date(c("04/04/2015"), format = "%m/%d/%Y")) + 0.5,
+           ymin = 0, ymax = max(data_admin3.daily$cum_trips), alpha = .2) + 
+  annotate("rect", xmin = as.numeric(as.Date(c("04/11/2015"), format = "%m/%d/%Y")) - 0.5,
+           xmax = as.numeric(as.Date(c("04/11/2015"), format = "%m/%d/%Y")) + 0.5,
+           ymin = 0, ymax = max(data_admin3.daily$cum_trips), alpha = .2) + 
+  annotate("rect", xmin = as.numeric(as.Date(c("04/18/2015"), format = "%m/%d/%Y")) - 0.5,
+           xmax = as.numeric(as.Date(c("04/18/2015"), format = "%m/%d/%Y")) + 0.5,
+           ymin = 0, ymax = max(data_admin3.daily$cum_trips), alpha = .2) + 
+  geom_point(aes(x=as.numeric(day), y=cum_trips, col=weekday), size=3) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  xlab("Day") + ylab("Cumulative Trips") + ggtitle("Daily Trips") +
+  scale_x_continuous(breaks = c(as.numeric(as.Date(c("04/01/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("04/15/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("05/01/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("05/15/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("06/01/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("06/15/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("07/01/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("07/15/2015"), format = "%m/%d/%Y"))),
+                     labels = c("04/01/2015", "04/15/2015", "05/01/2015", "05/15/2015",
+                                "06/01/2015", "06/15/2015", "07/01/2015", "07/15/2015"))
+
+# Focus on Freetown
+data_admin3.daily.Freetown <- data.frame(matrix(rep(NA, 2*(ncol(data_admin3)-3)), ncol=2))
+names(data_admin3.daily.Freetown) <- c("day", "cum_trips")
+data_admin3.daily.Freetown$day <- names(data_admin3)[3:(ncol(data_admin3)-1)]
+
+for (row in 1:nrow(data_admin3.daily.Freetown)){
+  data_admin3.daily.Freetown[row, "cum_trips"] <- sum(data_admin3.melt[data_admin3.melt$Chief_From > 4000 & 
+                                                                     data_admin3.melt$variable == data_admin3.daily[row, "day"],"value"])
+}
+data_admin3.daily.Freetown$weekday <- c(rep(c("Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"), times = floor(nrow(data_admin3.daily.Freetown)/7)), c("Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday"))
+tail(data_admin3.daily.Freetown)
+
+ggplot(data = data_admin3.daily.Freetown) +
+  # "three days stay at home" March 27-29 nationally
+  annotate("rect", xmin = as.numeric(as.Date(c("03/27/2015"), format = "%m/%d/%Y")) - 0.5,
+           xmax = as.numeric(as.Date(c("03/29/2015"), format = "%m/%d/%Y")) + 0.5,
+           ymin = 0, ymax = max(data_admin3.daily.Freetown$cum_trips), alpha = .2) +
+  # Three saturdays (April 4, 11, 18)
+  annotate("rect", xmin = as.numeric(as.Date(c("04/04/2015"), format = "%m/%d/%Y")) - 0.5,
+           xmax = as.numeric(as.Date(c("04/04/2015"), format = "%m/%d/%Y")) + 0.5,
+           ymin = 0, ymax = max(data_admin3.daily.Freetown$cum_trips), alpha = .2) + 
+  annotate("rect", xmin = as.numeric(as.Date(c("04/11/2015"), format = "%m/%d/%Y")) - 0.5,
+           xmax = as.numeric(as.Date(c("04/11/2015"), format = "%m/%d/%Y")) + 0.5,
+           ymin = 0, ymax = max(data_admin3.daily.Freetown$cum_trips), alpha = .2) + 
+  annotate("rect", xmin = as.numeric(as.Date(c("04/18/2015"), format = "%m/%d/%Y")) - 0.5,
+           xmax = as.numeric(as.Date(c("04/18/2015"), format = "%m/%d/%Y")) + 0.5,
+           ymin = 0, ymax = max(data_admin3.daily.Freetown$cum_trips), alpha = .2) + 
+  geom_point(aes(x=as.numeric(day), y=cum_trips, col=weekday), size=3) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  xlab("Day") + ylab("Cumulative Trips") + ggtitle("Daily Trips") +
+  scale_x_continuous(breaks = c(as.numeric(as.Date(c("04/01/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("04/15/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("05/01/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("05/15/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("06/01/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("06/15/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("07/01/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("07/15/2015"), format = "%m/%d/%Y"))),
+                     labels = c("04/01/2015", "04/15/2015", "05/01/2015", "05/15/2015",
+                                "06/01/2015", "06/15/2015", "07/01/2015", "07/15/2015"))
+
+
+# Focus on everything but Freetown
+data_admin3.daily.NotFreetown <- data.frame(matrix(rep(NA, 2*(ncol(data_admin3)-3)), ncol=2))
+names(data_admin3.daily.NotFreetown) <- c("day", "cum_trips")
+data_admin3.daily.NotFreetown$day <- names(data_admin3)[3:(ncol(data_admin3)-1)]
+
+for (row in 1:nrow(data_admin3.daily.NotFreetown)){
+  data_admin3.daily.NotFreetown[row, "cum_trips"] <- sum(data_admin3.melt[data_admin3.melt$Chief_From < 4000 & 
+                                                                         data_admin3.melt$variable == data_admin3.daily[row, "day"],"value"])
+}
+data_admin3.daily.NotFreetown$weekday <- c(rep(c("Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"), times = floor(nrow(data_admin3.daily.NotFreetown)/7)), c("Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday"))
+tail(data_admin3.daily.NotFreetown)
+
+ggplot(data = data_admin3.daily.NotFreetown) +
+  # "three days stay at home" March 27-29 nationally
+  annotate("rect", xmin = as.numeric(as.Date(c("03/27/2015"), format = "%m/%d/%Y")) - 0.5,
+           xmax = as.numeric(as.Date(c("03/29/2015"), format = "%m/%d/%Y")) + 0.5,
+           ymin = 0, ymax = max(data_admin3.daily.NotFreetown$cum_trips), alpha = .2) +
+  # Three saturdays (April 4, 11, 18)
+  annotate("rect", xmin = as.numeric(as.Date(c("04/04/2015"), format = "%m/%d/%Y")) - 0.5,
+           xmax = as.numeric(as.Date(c("04/04/2015"), format = "%m/%d/%Y")) + 0.5,
+           ymin = 0, ymax = max(data_admin3.daily.NotFreetown$cum_trips), alpha = .2) + 
+  annotate("rect", xmin = as.numeric(as.Date(c("04/11/2015"), format = "%m/%d/%Y")) - 0.5,
+           xmax = as.numeric(as.Date(c("04/11/2015"), format = "%m/%d/%Y")) + 0.5,
+           ymin = 0, ymax = max(data_admin3.daily.NotFreetown$cum_trips), alpha = .2) + 
+  annotate("rect", xmin = as.numeric(as.Date(c("04/18/2015"), format = "%m/%d/%Y")) - 0.5,
+           xmax = as.numeric(as.Date(c("04/18/2015"), format = "%m/%d/%Y")) + 0.5,
+           ymin = 0, ymax = max(data_admin3.daily.NotFreetown$cum_trips), alpha = .2) + 
+  geom_point(aes(x=as.numeric(day), y=cum_trips, col=weekday), size=3) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  xlab("Day") + ylab("Cumulative Trips") + ggtitle("Daily Trips") +
+  scale_x_continuous(breaks = c(as.numeric(as.Date(c("04/01/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("04/15/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("05/01/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("05/15/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("06/01/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("06/15/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("07/01/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("07/15/2015"), format = "%m/%d/%Y"))),
+                     labels = c("04/01/2015", "04/15/2015", "05/01/2015", "05/15/2015",
+                                "06/01/2015", "06/15/2015", "07/01/2015", "07/15/2015"))
+
+#### Which travel routes are the ones that are affected by the national movement restriction days? ####
+
+# Make a sequence of plots with each chiefdom shaded by the number of trips from that chiefdom by day
 
