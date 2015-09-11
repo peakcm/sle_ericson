@@ -16,6 +16,8 @@ library(maps)
 library(geosphere)
 library(RColorBrewer)
 library(reshape2)
+library(RCurl)
+library(plotly)
 
 #### Tasks ####
 # Look at number of trips during quarantine days compared to non
@@ -28,6 +30,14 @@ library(reshape2)
 # Create a dataset for the Admin 2 Trips
 setwd("/Users/peakcm/Documents/SLE_Mobility/sle_ericson")
 data_admin2 <- read.csv(file = "IndivMvtBtwnAdmin2DaySep1Agg.csv")
+
+date.start <- as.numeric(as.Date(c("03/20/2015"), format = "%m/%d/%Y"))
+dates <- seq(from = date.start, to = date.start + ncol(data_admin2) - 3)
+names(data_admin2) <- c("Dis_From", "Dis_To",  dates)
+data_admin2$cum_trips <- apply(data_admin2[,3:ncol(data_admin2)], 1, sum)
+data_admin2$cum_trips_16518to16520 <- apply(data_admin2[,7:9], 1, sum)
+data_admin2$cum_trips_16521to16523 <- apply(data_admin2[,10:12], 1, sum)
+data_admin2$cum_trips_16524to16526 <- apply(data_admin2[,13:15], 1, sum)
 
 # Create a dataset for the Admin 3 Trips
 setwd("/Users/peakcm/Documents/SLE_Mobility/sle_ericson")
@@ -50,9 +60,8 @@ towers.fort <- fortify(towers, region = admin3)
 # Add Buffer to tower locations
 work.dir <- "/Users/peakcm/Documents/SLE_Mobility/Arc GIS"
 towers_buffer <- readOGR(work.dir, layer = 'towers_buffer')
-plot(towers_buffer)
+# plot(towers_buffer)
 towers_buffer.fort <- fortify(towers_buffer)
-plot(towers_buffer.fort)
 
 # Add city CHCODES to the encompassing polygon
 data_admin3[data_admin3$Chief_From == 1291, "Chief_From"] <- 1212
@@ -102,9 +111,18 @@ admin3.sp <- spCbind(admin3.sp, centroids$Lat)
 admin3.sp.fort <- fortify(admin3.sp, region = "CHCODE", )
 admin3.sp.fort$CHCODE <- as.numeric(admin3.sp.fort$id)
 
+# Create a shapefile for Sierra Leone Admin 3
+work.dir <- "/Users/peakcm/Documents/SLE_Mobility/Arc GIS/Open Humanitarian Data Repository/Sierra_Leone_Districts_Admin_2_2012"
+admin2.sp <- readOGR(work.dir, layer = 'Sierra_Leone_Districts_Admin_2_2012')
+centroids <- data.frame(getSpPPolygonsLabptSlots(admin2.sp))
+names(centroids) <- c("Long", "Lat")
+admin2.sp <- spCbind(admin2.sp, centroids$Long)
+admin2.sp <- spCbind(admin2.sp, centroids$Lat)
+admin2.sp.fort <- fortify(admin2.sp, region = "DISCODE", )
+admin2.sp.fort$DISCODE <- as.numeric(admin2.sp.fort$id)
+
 #### Tonkolili Plots ####
 # Focus on Kholifa Rowala Chiefdom (2505) in Tonkolili District
-layout(c(1))
 hist(log(data_admin3[data_admin3$Chief_From == 2505, "cum_trips"]), xlab = "log(cumulative trips)", main = "Trips from Kholifa Rowala, Tonkolili")
 data_admin3 <- data_admin3[order(-data_admin3$cum_trips),]
 plot(data_admin3[data_admin3$Chief_From == 2505, "cum_trips"],
@@ -115,7 +133,6 @@ date.tonk <- as.numeric(as.Date(c("07/24/2015"), format = "%m/%d/%Y"))
 # plot(data_admin3[data_admin3$Chief_From == 2505, "cum_trips"], main = "Trips from Tonkolili")
 
 # Pie chart (Chiefdoms)
-layout(t(c(1,2)))
 lbls <- paste(data_admin3[data_admin3$Chief_From == 2505,"Chief_To"], "\n", round(data_admin3[data_admin3$Chief_From == 2505,"cum_trips"]/sum(data_admin3[data_admin3$Chief_From == 2505,"cum_trips"])*100, 0),"%", sep="")
 pie(x = data_admin3[data_admin3$Chief_From == 2505,"cum_trips"], labels = lbls, main="Chiefdom Destinations from\nKholifa Rowala, Tonkolili (2505)", )
 
@@ -136,7 +153,6 @@ for (dist in data_Tonk_districts$district){
 }
 data_Tonk_districts$region <- floor(data_Tonk_districts$district/10)
 
-# layout(t(c(1,2)))
 # lbls <- paste(data_Tonk_districts$district, "\n", round(data_Tonk_districts$from/sum(data_Tonk_districts$from)*100, 0),"%", sep="")
 # pie(x = data_Tonk_districts$from, labels = lbls, main="District Destinations\n from Kholifa Rowala, Tonkolili (2505)")
 # 
@@ -222,7 +238,6 @@ ggplot() +
 # Focus on Tonko Limba Chiefdom (2207) in Kambia District
 # http://www.reuters.com/article/2015/09/02/us-health-ebola-leone-idUSKCN0R22CV20150902
 # http://www.cidrap.umn.edu/news-perspective/2015/09/more-ebola-sierra-leone-dallas-probe-notes-missteps
-layout(c(1))
 hist(log(data_admin3[data_admin3$Chief_From == 2207, "cum_trips"]), xlab = "log(cumulative trips)", main = "Trips from Tonko Limba, Kambia")
 data_admin3 <- data_admin3[order(-data_admin3$cum_trips),]
 
@@ -230,7 +245,6 @@ plot(data_admin3[data_admin3$Chief_From == 2207, "cum_trips"],
      main = "Trips from Tonko Limba, Kambia", xlab = "Chiefdom Rank", ylab = "Cumulative Trips")
 
 # Pie chart (Chiefdoms)
-layout(t(c(1,2)))
 lbls <- paste(data_admin3[data_admin3$Chief_From == 2207,"Chief_To"], "\n", round(data_admin3[data_admin3$Chief_From == 2207,"cum_trips"]/sum(data_admin3[data_admin3$Chief_From == 2207,"cum_trips"])*100, 0),"%", sep="")
 pie(x = data_admin3[data_admin3$Chief_From == 2207,"cum_trips"], labels = lbls, main="Chiefdom Destinations\n from Tonko Limba, Kambia (2207)", )
 
@@ -251,7 +265,6 @@ for (dist in data_kambia_districts$district){
 }
 data_kambia_districts$region <- floor(data_kambia_districts$district/10)
 
-# layout(t(c(1,2)))
 # lbls <- paste(data_kambia_districts$district, "\n", round(data_kambia_districts$from/sum(data_kambia_districts$from)*100, 0),"%", sep="")
 # pie(x = data_kambia_districts$from, labels = lbls, main="District Destinations\n from Tonko Limba, Kambia (2207)")
 # 
@@ -370,7 +383,6 @@ ggplot() +
   geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="grey", size=18, pch = 1)
 
 #### Country-wide maps ####
-
 # What proportion of travel is through Freetown?
 sum(data_admin3[data_admin3$Chief_From > 4000, "cum_trips"])
 sum(data_admin3[data_admin3$Chief_From < 4000, "cum_trips"])
@@ -405,7 +417,6 @@ ggplot() +
   geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1)
 
 # Map all connections
-layout(c(1))
 plot(admin3.sp)
 
 for (row in 1:nrow(data_admin3)){
@@ -427,7 +438,6 @@ colors <- colorRampPalette(brewer.pal(9,"Blues"))(100)
 
 range <- max(data_admin3$cum_trips)
   
-layout(c(1))
 plot(admin3.sp)
 
 for (row in 1:nrow(data_admin3)){
@@ -452,7 +462,6 @@ range <- max(log(data_admin3$cum_trips))
 colors <- colorRampPalette(brewer.pal(9,"Blues"))(100)
 
 # dev.off()
-layout(c(1))
 plot(admin3.sp)
 for (row in start:nrow(data_admin3)){
   from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
@@ -472,7 +481,6 @@ points(towers.fort$Long, towers.fort$Lat)
 
 # Travel from Freetown. shade connections weighted by log of count
 # dev.off()
-layout(c(1))
 plot(admin3.sp)
 for (row in 1:nrow(data_admin3)){
   from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
@@ -493,7 +501,6 @@ for (row in 1:nrow(data_admin3)){
 
 # Travel from Bo Town shade connections weighted by log of count
 # dev.off()
-layout(c(1))
 plot(admin3.sp)
 for (row in 1:nrow(data_admin3)){
   from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
@@ -514,7 +521,6 @@ for (row in 1:nrow(data_admin3)){
 
 # Travel from Kenema Town. shade connections weighted by log of count
 # dev.off()
-layout(c(1))
 plot(admin3.sp)
 for (row in 1:nrow(data_admin3)){
   from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
@@ -535,7 +541,6 @@ for (row in 1:nrow(data_admin3)){
 
 # Travel from Tonko Limba shade connections weighted by log of count
 # dev.off()
-layout(c(1))
 plot(admin3.sp)
 for (row in 1:nrow(data_admin3)){
   from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
@@ -683,8 +688,7 @@ ggplot(data = data_admin3.daily.NotFreetown) +
                      labels = c("04/01/2015", "04/15/2015", "05/01/2015", "05/15/2015",
                                 "06/01/2015", "06/15/2015", "07/01/2015", "07/15/2015"))
 
-#### Which travel routes are the ones that are affected by the national movement restriction days? ####
-
+#### Map spatial heterogeneity of national movement restriction intervention ####
 # Make a sequence of plots with each chiefdom shaded by the number of trips from that chiefdom by day
 # This was performed manually by changing 16514 to the other dates of interest and replotting.
 # See folder "Daily maps from 03/20 to 04/01"
@@ -704,7 +708,7 @@ ggplot() +
   theme_bw() + ggtitle(print(date)) +
   scale_fill_continuous(name = "Log10(Number of Trips)", low="white", high="darkblue", limits = c(0,1.2*log10(max(admin3.sp.fort$trips_from.16514))))
 
-# Make a map that compares the % change in travel during the stay at home days.
+# Make a map that compares the % change in travel during the stay at home days. (Admin 3)
 admin3.sp.fort$trips_from.16524to16526 <- NA
 admin3.sp.fort$trips_to.16524to16526 <- NA
 
@@ -720,9 +724,25 @@ ggplot() +
   theme_bw() + ggtitle("Decrease in Mobility during 3 National 'Stay At Home' days") +
   scale_fill_continuous(name = "Percent Change from\nPrevious 3 Days", low="lightgreen", high="black") +
   guides(fill = guide_legend(reverse=TRUE))
+
+# Make a map that compares the % change in travel during the stay at home days. (Admin 2)
+admin2.sp.fort$trips_from.165224to16526 <- NA
+admin2.sp.fort$trips_to.16524to16526 <- NA
+
+for (dis in unique(admin2.sp.fort$DISCODE)){
+  admin2.sp.fort[admin2.sp.fort$DISCODE == dis, "trips_from.16524to16526"] <- sum(data_admin2[data_admin2$Dis_From == dis,"cum_trips_16524to16526"]) 
+  admin2.sp.fort[admin2.sp.fort$DISCODE == dis, "trips_to.16524to16526"] <- sum(data_admin2[data_admin2$Dis_To == dis,"cum_trips_16524to16526"]) 
+}
+
+ggplot() +
+  geom_polygon(data = admin2.sp.fort, aes(x = long, y = lat, fill = (100*(trips_from.16521to16523 - trips_from.16518to16520) / trips_from.16518to16520), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin2.sp.fort[is.element(admin2.sp.fort$CHCODE, towers$DISCODE)==0,], aes(x = long, y = lat, group = group), size=1.2, fill = "lightgrey") +
+  coord_equal() +
+  theme_bw() + ggtitle("Decrease in Mobility Between Districts during 3 National 'Stay At Home' days") +
+  scale_fill_continuous(name = "Percent Change from\nPrevious 3 Days", low="lightgreen", high="black") +
+  guides(fill = guide_legend(reverse=TRUE))
   
 # Make a series of daily maps that show the weight of each connection
-
 # Shade connections weighted by log of count
 data_admin3 <- data_admin3[order(data_admin3$cum_trips),] #sort so the heavier connections are drawn later
 
@@ -731,7 +751,6 @@ range <- 1.2*max(log(data_admin3[,"16519"]))
 colors <- colorRampPalette(brewer.pal(9,"Blues"))(100)
 
 # dev.off()
-layout(t(c(1,2,3)))
 for (days in c("16520","16521","16524")){
   plot(admin3.sp)
   title(main = as.character(as.Date(as.numeric(days), origin = "1970-01-01")))
