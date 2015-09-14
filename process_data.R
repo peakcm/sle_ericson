@@ -352,6 +352,120 @@ ggplot() +
   geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1) +
   geom_point(aes(x=sella_coords[2], y=sella_coords[1]), shape = "X", size=3, color="red")
 
+#### Bombali Plots ####
+# Focus on Makeni Town Chiefdom (2102 by aggregation) in Bombali District
+# Note that the quarantined village of Robuya, where she lived, is within a mile of Makeni Town, where she died.
+# There may be a closer tower to consider
+hist(log(data_admin3[data_admin3$Chief_From == 2102, "cum_trips"]), xlab = "log(cumulative trips)", main = "Trips from Makeni Town, Bombali")
+data_admin3 <- data_admin3[order(-data_admin3$cum_trips),]
+
+plot(data_admin3[data_admin3$Chief_From == 2102, "cum_trips"], 
+     main = "Trips from Makeni Town, Bombali", xlab = "Chiefdom Rank", ylab = "Cumulative Trips")
+
+# Pie chart (Chiefdoms)
+lbls <- paste(data_admin3[data_admin3$Chief_From == 2102,"Chief_To"], "\n", round(data_admin3[data_admin3$Chief_From == 2207,"cum_trips"]/sum(data_admin3[data_admin3$Chief_From == 2102,"cum_trips"])*100, 0),"%", sep="")
+pie(x = data_admin3[data_admin3$Chief_From == 2102,"cum_trips"], labels = lbls, main="Chiefdom Destinations\n from Makeni Town, Bombali (2102)", )
+
+lbls <- paste(data_admin3[data_admin3$Chief_To == 2102,"Chief_From"], "\n", round(data_admin3[data_admin3$Chief_To == 2102,"cum_trips"]/sum(data_admin3[data_admin3$Chief_To == 2102,"cum_trips"])*100, 0),"%", sep="")
+pie(x = data_admin3[data_admin3$Chief_To == 2102,"cum_trips"], labels = lbls, main="Chiefdom Departures\n to Makeni Town, Bombali (2102)", )
+
+# Pie chart (Districts)
+data_Bombali_districts <- data.frame(sort(unique(data_admin2[,1])))
+names(data_Bombali_districts) <- c("district")
+data_Bombali_districts$from <- NA
+data_Bombali_districts$to <- NA
+for (dist in data_Bombali_districts$district){
+  cat(dist, "\n")
+  data_Bombali_districts[data_Bombali_districts$district == dist, "from"] <- 
+    sum(data_admin3[data_admin3$Chief_From == 2102 & floor(data_admin3$Chief_To/100) == dist, "cum_trips"])
+  data_Bombali_districts[data_Bombali_districts$district == dist, "to"] <- 
+    sum(data_admin3[data_admin3$Chief_To == 2102 & floor(data_admin3$Chief_From/100) == dist, "cum_trips"])
+}
+data_Bombali_districts$region <- floor(data_Bombali_districts$district/10)
+
+ggplot(data=data_Bombali_districts) +
+  geom_bar(aes(x=factor(district), y=from, fill = factor(region)), stat="identity") +
+  xlab("Source District Number") +
+  ylab("Number of trips") +
+  ggtitle("Trips from Makeni Town, Bombali") +
+  scale_fill_discrete(name = "Region",labels=c("East","North","South", "West")) +
+  theme_bw()
+
+ggplot(data=data_Bombali_districts) +
+  geom_bar(aes(x=factor(district), y=to, fill = factor(region)), stat="identity") +
+  xlab("Destination District Number") +
+  ylab("Number of trips") +
+  ggtitle("Trips to Makeni Town, Bombali") +
+  scale_fill_discrete(name = "Region", labels=c("East","North","South", "West")) +
+  theme_bw()
+
+#### Spatial for Bombali ####
+
+robuya_coords <- c(8.874, -12)
+
+bombali <- data.frame(matrix(rep(NA, nrow(admin3.sp)*3), ncol=3))
+names(bombali) <- c("CHCODE", "from_bombali", "to_bombali")
+for (row in 1:nrow(admin3.sp)){
+  chief <- admin3.sp$CHCODE[row]
+  bombali[row, "CHCODE"] <- chief
+  if (is.element(chief, data_admin3$Chief_From) & is.element(chief, data_admin3$Chief_To) & chief != 2102){
+    bombali[row, "from_bombali"] <-  max(0, data_admin3[data_admin3$Chief_From == 2102 & data_admin3$Chief_To == chief, "cum_trips"])
+    bombali[row, "to_bombali"] <-  max(0, data_admin3[data_admin3$Chief_To == 2102 & data_admin3$Chief_From == chief, "cum_trips"])
+  } else {
+    bombali[row, "from_bombali"] <-  0
+    bombali[row, "to_bombali"] <-  0
+  }
+}
+admin3.sp.fort$from_bombali <- NA
+admin3.sp.fort$to_bombali <- NA
+
+for (row in 1:nrow(admin3.sp.fort)){
+  if (is.element(admin3.sp.fort[row,"CHCODE"], bombali$CHCODE)){
+    admin3.sp.fort[row, "from_bombali"] <- bombali[bombali$CHCODE == admin3.sp.fort[row,"CHCODE"],"from_bombali"]
+    admin3.sp.fort[row, "to_bombali"] <- bombali[bombali$CHCODE == admin3.sp.fort[row,"CHCODE"],"to_bombali"]
+  } else {
+    admin3.sp.fort[row, "from_bombali"] <- 0
+    admin3.sp.fort[row, "to_bombali"] <- 0
+  }
+}
+
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(from_bombali+1), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2102,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
+  coord_equal() +
+  theme_bw() + ggtitle("Destinations from Makeni Town, Bombali") +
+  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white") +
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1) +
+  geom_point(aes(x=robuya_coords[2], y=robuya_coords[1]), shape = "X", size=3, color="red")
+
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = from_bombali/sum(bombali$from_bombali), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2102,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
+  coord_equal() +
+  theme_bw() + ggtitle("Destinations from Makeni Town, Bombali") +
+  scale_fill_continuous(name = "Proportion of Trips", low = "white") +
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1) +
+  geom_point(aes(x=robuya_coords[2], y=robuya_coords[1]), shape = "X", size=3, color="red")
+
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(to_bombali+1), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2102,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
+  coord_equal() +
+  theme_bw() + ggtitle("Sources to Makeni Town, Bombali") +
+  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white")+
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1) +
+  geom_point(aes(x=robuya_coords[2], y=robuya_coords[1]), shape = "X", size=3, color="red")
+
+ggplot() +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = to_bombali/sum(bombali$to_bombali), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2102,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
+  coord_equal() +
+  theme_bw() + ggtitle("Sources to Makeni Town, Bombali") +
+  scale_fill_continuous(name = "Proportion of Trips", low = "white") +
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1) +
+  geom_point(aes(x=robuya_coords[2], y=robuya_coords[1]), shape = "X", size=3, color="red")
+
+
 #### Find Chiefdoms without towers ####
 length(unique(data_admin3$Chief_From))
 length(unique(towers$CHCODE))
