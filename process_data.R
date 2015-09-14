@@ -942,6 +942,20 @@ ggplot(data_admin2.melt[is.element(data_admin2.melt$variable, c("cum_trips_16518
   scale_fill_discrete(name = "Time Period", labels=c("Before Intervetion","During Intervention","After Intervention")) +
   xlab("Destination District") + ylab("Number of Trips")
 
+# Plot the change in travel as a function of travel distance
+data_admin2$Hours <- NA
+for (i in 1:nrow(data_admin2)){
+  data_admin2[i, "Hours"] <- travel.times[travel.times$Dis_From == data_admin2[i, "Dis_From"] &
+                                            travel.times$Dis_To == data_admin2[i, "Dis_To"], "Hours"]
+}
+ggplot(data_admin2, aes(x=Hours, y=cum_trips)) + 
+  geom_boxplot(aes(group = factor(Hours)))
+
+ggplot(data_admin2[data_admin2$cum_trips_16518to16520 > 5,], aes(x=Hours, y= 100*(cum_trips_16521to16523 - cum_trips_16518to16520)/(cum_trips_16518to16520))) + 
+  geom_boxplot(aes(group = factor(Hours))) +
+  theme_bw() + ylab("Percent change in inter-district trips") + xlab("Travel time between Districts (Hours)") +
+  ggtitle("Effect of national stay at home days by distance traveled")
+
 # Make a series of daily maps that show the weight of each connection
 # Shade connections weighted by log of count
 data_admin2 <- data_admin2[order(data_admin2$cum_trips),] #sort so the heavier connections are drawn later
