@@ -128,13 +128,9 @@ data_admin3 <- data_admin3[order(-data_admin3$cum_trips),]
 plot(data_admin3[data_admin3$Chief_From == 2505, "cum_trips"],
      main = "Trips from Kholifa Rowala, Tonkolili", xlab = "Chiefdom Rank", ylab = "Cumulative trips")
 
-#Split data into before and after case detection
-date.tonk <- as.numeric(as.Date(c("07/24/2015"), format = "%m/%d/%Y"))
-# plot(data_admin3[data_admin3$Chief_From == 2505, "cum_trips"], main = "Trips from Tonkolili")
-
 # Pie chart (Chiefdoms)
 lbls <- paste(data_admin3[data_admin3$Chief_From == 2505,"Chief_To"], "\n", round(data_admin3[data_admin3$Chief_From == 2505,"cum_trips"]/sum(data_admin3[data_admin3$Chief_From == 2505,"cum_trips"])*100, 0),"%", sep="")
-pie(x = data_admin3[data_admin3$Chief_From == 2505,"cum_trips"], labels = lbls, main="Chiefdom Destinations from\nKholifa Rowala, Tonkolili (2505)", )
+pie(x = data_admin3[data_admin3$Chief_From == 2505,"cum_trips"], labels = lbls, main="Chiefdom D1estinations from\nKholifa Rowala, Tonkolili (2505)", )
 
 lbls <- paste(data_admin3[data_admin3$Chief_To == 2505,"Chief_From"], "\n", round(data_admin3[data_admin3$Chief_To == 2505,"cum_trips"]/sum(data_admin3[data_admin3$Chief_To == 2505,"cum_trips"])*100, 0),"%", sep="")
 pie(x = data_admin3[data_admin3$Chief_To == 2505,"cum_trips"], labels = lbls, main="Chiefdom Departures to\nKholifa Rowala, Tonkolili (2505)", )
@@ -560,7 +556,6 @@ for (row in 1:nrow(data_admin3)){
 }
 
 #### Country-wide temporal series ####
-
 # Melt data_admin3 call data
 data_admin3.melt <- melt(data_admin3, id = c("Chief_From", "Chief_To"))
 
@@ -741,32 +736,96 @@ ggplot() +
   theme_bw() + ggtitle("Decrease in Mobility Between Districts during 3 National 'Stay At Home' days") +
   scale_fill_continuous(name = "Percent Change from\nPrevious 3 Days", low="lightgreen", high="black") +
   guides(fill = guide_legend(reverse=TRUE))
+
+# See if travel FROM districts with ongoing transmission had more effect of intervention
+# http://maps.who.int/MapJournal/?appid=cc1ec3ef5c3944079c5e7935a45b71d4&webmap=bb9e11adb0ac447f919281f67ce9aa59
+Transmission.Dis <- c( "21", "22", "24", "33", "41", "42")
+
+a <- sum(data_admin2[is.element(data_admin2$Dis_From,Transmission.Dis)==1,"cum_trips_16521to16523" ])
+b <- sum(data_admin2[is.element(data_admin2$Dis_From,Transmission.Dis)==0,"cum_trips_16521to16523" ])
+c <- sum(data_admin2[is.element(data_admin2$Dis_From,Transmission.Dis)==1,"cum_trips_16518to16520" ])
+d <- sum(data_admin2[is.element(data_admin2$Dis_From,Transmission.Dis)==0,"cum_trips_16518to16520" ])
   
+cat("Pecent change in inter-district travel from districts with ongoing transmission: ", (a-c)/c * 100)
+cat("Pecent change in inter-district travel from districts withOUT ongoing transmission: ", (b-d)/d * 100)
+
+chisq.mat <- matrix(c(a,b,c,d), ncol=2, byrow = TRUE)
+chisq.mat
+chisq.test(chisq.mat)
+cat("The percent reduction in inter-district travel from districts with ongoing transmission\nwas significantly greater than from districts withOUT ongoing transmission ( p = ", chisq.test(chisq.mat)$p.value,")")
+
+# See if travel TO districts with ongoing transmission had more effect of intervention
+Transmission.Dis <- c( "21", "22", "24", "33", "41", "42")
+
+a <- sum(data_admin2[is.element(data_admin2$Dis_To,Transmission.Dis)==1,"cum_trips_16521to16523" ])
+b <- sum(data_admin2[is.element(data_admin2$Dis_To,Transmission.Dis)==0,"cum_trips_16521to16523" ])
+c <- sum(data_admin2[is.element(data_admin2$Dis_To,Transmission.Dis)==1,"cum_trips_16518to16520" ])
+d <- sum(data_admin2[is.element(data_admin2$Dis_To,Transmission.Dis)==0,"cum_trips_16518to16520" ])
+
+cat("Pecent change in inter-district travel to districts with ongoing transmission: ", (a-c)/c * 100)
+cat("Pecent change in inter-district travel to districts withOUT ongoing transmission: ", (b-d)/d * 100)
+
+chisq.mat <- matrix(c(a,b,c,d), ncol=2, byrow = TRUE)
+chisq.mat
+chisq.test(chisq.mat)
+cat("The percent reduction in inter-district travel to districts with ongoing transmission\nwas significantly less than from districts withOUT ongoing transmission ( p = ", chisq.test(chisq.mat)$p.value,")")
+
+# See if travel TO or FROM districts with ongoing transmission had more effect of intervention
+Transmission.Dis <- c( "21", "22", "24", "33", "41", "42")
+
+a <- sum(data_admin2[is.element(data_admin2$Dis_To,Transmission.Dis)==1 | is.element(data_admin2$Dis_From,Transmission.Dis)==1,"cum_trips_16521to16523" ])
+b <- sum(data_admin2[is.element(data_admin2$Dis_To,Transmission.Dis)==0 & is.element(data_admin2$Dis_From,Transmission.Dis)==0,"cum_trips_16521to16523" ])
+c <- sum(data_admin2[is.element(data_admin2$Dis_To,Transmission.Dis)==1 | is.element(data_admin2$Dis_From,Transmission.Dis)==1,"cum_trips_16518to16520" ])
+d <- sum(data_admin2[is.element(data_admin2$Dis_To,Transmission.Dis)==0 & is.element(data_admin2$Dis_From,Transmission.Dis)==0,"cum_trips_16518to16520" ])
+
+cat("Pecent change in inter-district travel to or from districts with ongoing transmission: ", (a-c)/c * 100)
+cat("Pecent change in inter-district travel to or from districts withOUT ongoing transmission: ", (b-d)/d * 100)
+
+chisq.mat <- matrix(c(a,b,c,d), ncol=2, byrow = TRUE)
+chisq.mat
+chisq.test(chisq.mat)
+cat("The percent reduction in inter-district travel to or from districts with ongoing transmission\nwas not significantly different than from districts withOUT ongoing transmission ( p = ", chisq.test(chisq.mat)$p.value,")")
+
+# Make a bar chart with travel before, during, and after intervention
+data_admin2.melt <- melt(data_admin2, id = c("Dis_From","Dis_To"))
+ggplot(data_admin2.melt[is.element(data_admin2.melt$variable, c("cum_trips_16518to16520","cum_trips_16521to16523", "cum_trips_16524to16526")),], aes(factor(Dis_From), value)) +
+  geom_bar(aes(fill=variable), position = "dodge", stat = "identity") +
+  scale_fill_discrete(name = "Time Period", labels=c("Before Intervetion","During Intervention","After Intervention")) +
+  xlab("Source District") + ylab("Number of Trips")
+
+ggplot(data_admin2.melt[is.element(data_admin2.melt$variable, c("cum_trips_16518to16520","cum_trips_16521to16523", "cum_trips_16524to16526")),], aes(factor(Dis_To), value)) +
+  geom_bar(aes(fill=variable), position = "dodge", stat = "identity") +
+  scale_fill_discrete(name = "Time Period", labels=c("Before Intervetion","During Intervention","After Intervention")) +
+  xlab("Destination District") + ylab("Number of Trips")
+
 # Make a series of daily maps that show the weight of each connection
 # Shade connections weighted by log of count
-data_admin3 <- data_admin3[order(data_admin3$cum_trips),] #sort so the heavier connections are drawn later
+data_admin2 <- data_admin2[order(data_admin2$cum_trips),] #sort so the heavier connections are drawn later
 
 start <- 1
-range <- 1.2*max(log(data_admin3[,"16519"]))
+range <- 1.2*max(log(data_admin2[,"16519"]))
 colors <- colorRampPalette(brewer.pal(9,"Blues"))(100)
 
 # dev.off()
+# detach("package:plotly", unload=TRUE)
+layout(t(c(1,2,3)))
 for (days in c("16520","16521","16524")){
-  plot(admin3.sp)
+  plot(admin2.sp)
   title(main = as.character(as.Date(as.numeric(days), origin = "1970-01-01")))
-  for (row in start:nrow(data_admin3)){
+  for (row in start:nrow(data_admin2)){
     
-    from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
-    to <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_To"])
+    from <- which(admin2.sp$DISCODE==data_admin2[row, "Dis_From"])
+    to <- which(admin2.sp$DISCODE==data_admin2[row, "Dis_To"])
     
-    lon_1 <- admin3.sp$centroids.Long[from]
-    lat_1 <- admin3.sp$centroids.Lat[from]
-    lon_2 <- admin3.sp$centroids.Long[to]
-    lat_2 <- admin3.sp$centroids.Lat[to]
+    lon_1 <- admin2.sp$centroids.Long[from]
+    lat_1 <- admin2.sp$centroids.Lat[from]
+    lon_2 <- admin2.sp$centroids.Long[to]
+    lat_2 <- admin2.sp$centroids.Lat[to]
     inter <- gcIntermediate(c(lon_1, lat_1), c(lon_2, lat_2), n=50, addStartEnd=TRUE)
     
-    weight <- ceiling(log(data_admin3[row,as.character(days)]) / range * 100) / 100
+    weight <- ceiling(log(data_admin2[row,as.character(days)]) / range * 100) / 100
     
     lines(inter, col = colors[weight*100], lwd = 3*weight^2)
   }
 }
+
