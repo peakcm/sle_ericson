@@ -121,6 +121,36 @@ admin2.sp <- spCbind(admin2.sp, centroids$Lat)
 admin2.sp.fort <- fortify(admin2.sp, region = "DISCODE", )
 admin2.sp.fort$DISCODE <- as.numeric(admin2.sp.fort$id)
 
+# Create a dataset with estimated travel times between districts from WHO Mr. Yarabah Conteh
+names <- c("Bo", "Kaliahun", "Freetown", "Bombali", "Port Loko", "Bonthe", "Kambia", "Kenema", "Koindagu", "Kono", "Moyamba", "Pujehun", "Tonkolili", "Freetown_Rural")
+DISCODE <- c(31, 11, 42, 21, 24, 32, 22, 12, 23, 13, 33, 34, 25, 41)
+travel.times <- data.frame(rep(DISCODE, each=length(DISCODE)))
+names(travel.times) <- c("Dis_From")
+travel.times$Dis_To <- rep(DISCODE, times = length(DISCODE))
+travel.times$Hours <- NA
+travel.times[travel.times$Dis_From==31,"Hours"] <- c(0, 3, 3.5, 3, 2.5, 2, 3, 1, 5, 6, 2, 3, 3.5, 3.5)
+travel.times[travel.times$Dis_From==11,"Hours"] <- c(NA, 0, 7, 5.5, 6, 4, 6.5, 2, 7, 4, 5, 5.5, 7, 7)
+travel.times[travel.times$Dis_From==42,"Hours"] <- c(NA, NA, 0, 3, 3, 5, 4, 4.5, 5, 6, 4, 5, 4, 0)
+travel.times[travel.times$Dis_From==21,"Hours"] <- c(NA, NA, NA, 0, 2, 4, 3, 4, 2, 4, 4, 5, .75, NA)
+travel.times[travel.times$Dis_From==24,"Hours"] <- c(NA, NA, NA, NA, 0, 4, .75, 5, 4, 5, 3, 5, 3, NA)
+travel.times[travel.times$Dis_From==32,"Hours"] <- c(NA, NA, NA, NA, NA, 0, 4, 2, 6, 7, 3, 3, 5, NA)
+travel.times[travel.times$Dis_From==22,"Hours"] <- c(NA, NA, NA, NA, NA, NA, 0, 5, 5, 4, 4, 5, 3, NA)
+travel.times[travel.times$Dis_From==12,"Hours"] <- c(NA, NA, NA, NA, NA, NA, NA, 0, 7, 4, 3, 2.5, 5, NA)
+travel.times[travel.times$Dis_From==23,"Hours"] <- c(NA, NA, NA, NA, NA, NA, NA, NA, 0, 5, 6, 6, 2.5, NA)
+travel.times[travel.times$Dis_From==13,"Hours"] <- c(NA, NA, NA, NA, NA, NA, NA, NA, NA, 0, 7, 8, 3.5, NA)
+travel.times[travel.times$Dis_From==33,"Hours"] <- c(NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 0, 3.5, 5, NA)
+travel.times[travel.times$Dis_From==34,"Hours"] <- c(NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 0, 5, NA)
+travel.times[travel.times$Dis_From==25,"Hours"] <- c(NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 0, NA)
+travel.times[travel.times$Dis_From==41,"Hours"] <- travel.times[travel.times$Dis_From==42,"Hours"]
+
+for (i in 1:nrow(travel.times)){
+  if (is.na(travel.times[i, "Hours"]) == 1){
+    Dis_From <- travel.times[i, "Dis_From"]
+    Dis_To <- travel.times[i, "Dis_To"]
+    travel.times[i,"Hours"] <- travel.times[travel.times$Dis_From == Dis_To & travel.times$Dis_To == Dis_From, "Hours"]
+  }
+}
+
 #### Tonkolili Plots ####
 # Focus on Kholifa Rowala Chiefdom (2505) in Tonkolili District
 hist(log(data_admin3[data_admin3$Chief_From == 2505, "cum_trips"]), xlab = "log(cumulative trips)", main = "Trips from Kholifa Rowala, Tonkolili")
