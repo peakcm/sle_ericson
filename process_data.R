@@ -495,7 +495,6 @@ ggplot() +
   geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1) +
   geom_point(aes(x=robuya_coords[2], y=robuya_coords[1]), shape = "X", size=3, color="red")
 
-
 #### Find Chiefdoms without towers ####
 length(unique(data_admin3$Chief_From))
 length(unique(towers$CHCODE))
@@ -986,4 +985,39 @@ for (days in c("16520","16521","16524")){
     lines(inter, col = colors[weight*100], lwd = 3*weight^2)
   }
 }
+
+#### Calculate distance between towers ####
+# Calculate distance in kilometers between two points
+earth.dist <- function (long1, lat1, long2, lat2)
+{
+  rad <- pi/180
+  a1 <- lat1 * rad
+  a2 <- long1 * rad
+  b1 <- lat2 * rad
+  b2 <- long2 * rad
+  dlon <- b2 - a2
+  dlat <- b1 - a1
+  a <- (sin(dlat/2))^2 + cos(a1) * cos(b1) * (sin(dlon/2))^2
+  c <- 2 * atan2(sqrt(a), sqrt(1 - a))
+  R <- 6378.145
+  d <- R * c
+  return(d)
+}
+earth.dist(towers[1,"Long"], towers[1,"Lat"], towers[20,"Long"], towers[20, "Lat"])
+
+towers_dist <- data.frame(matrix(rep(NA, length(unique(towers$CellID))^2), nrow=length(unique(towers$CellID))))
+row.names(towers_dist) <- unique(towers$CellID)
+names(towers_dist) <- unique(towers$CellID)
+
+for (i in 1:nrow(towers_dist)){
+  for (j in 1:ncol(towers_dist)){
+    long1 <- towers[towers$CellID == row.names(towers_dist)[i], "Long"][1]
+    lat1  <- towers[towers$CellID == row.names(towers_dist)[i], "Lat"][1]
+    long2 <- towers[towers$CellID == row.names(towers_dist)[j], "Long"][1]
+    lat2  <- towers[towers$CellID == row.names(towers_dist)[j], "Lat"][1]
+    towers_dist[i,j] <- earth.dist(long1, lat1, long2, lat2)
+  }
+}
+write.csv(towers_dist, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/towers_dist.csv", )
+
 
