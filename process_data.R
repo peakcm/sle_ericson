@@ -393,7 +393,7 @@ plot(data_admin3[data_admin3$Chief_From == 2102, "cum_trips"],
      main = "Trips from Makeni Town, Bombali", xlab = "Chiefdom Rank", ylab = "Cumulative Trips")
 
 # Pie chart (Chiefdoms)
-lbls <- paste(data_admin3[data_admin3$Chief_From == 2102,"Chief_To"], "\n", round(data_admin3[data_admin3$Chief_From == 2207,"cum_trips"]/sum(data_admin3[data_admin3$Chief_From == 2102,"cum_trips"])*100, 0),"%", sep="")
+lbls <- paste(data_admin3[data_admin3$Chief_From == 2102,"Chief_To"], "\n", round(data_admin3[data_admin3$Chief_From == 2102,"cum_trips"]/sum(data_admin3[data_admin3$Chief_From == 2102,"cum_trips"])*100, 0),"%", sep="")
 pie(x = data_admin3[data_admin3$Chief_From == 2102,"cum_trips"], labels = lbls, main="Chiefdom Destinations\n from Makeni Town, Bombali (2102)", )
 
 lbls <- paste(data_admin3[data_admin3$Chief_To == 2102,"Chief_From"], "\n", round(data_admin3[data_admin3$Chief_To == 2102,"cum_trips"]/sum(data_admin3[data_admin3$Chief_To == 2102,"cum_trips"])*100, 0),"%", sep="")
@@ -413,21 +413,28 @@ for (dist in data_Bombali_districts$district){
 }
 data_Bombali_districts$region <- floor(data_Bombali_districts$district/10)
 
+data_Bombali_districts$district_name <- c("Kailahun", "Kenema", "Kono", "Bombali", "Kambia", "Koinadugu", "Port Loko", "Tonkolili", "Bo", "Bonthe", "Moyamba", "Pujehun", "Western Area Rural", "Western Area Urban")
+
+data_Bombali_districts <- data_Bombali_districts[order(data_Bombali_districts$to),] # Sort data so for horizontal bar chart
+
+data_Bombali_districts$district <- factor(data_Bombali_districts$district, levels = data_Bombali_districts$district, 
+                                          labels = data_Bombali_districts$district_name)
+
 ggplot(data=data_Bombali_districts) +
-  geom_bar(aes(x=factor(district), y=from, fill = factor(region)), stat="identity") +
+  geom_bar(aes(x=district, y=from, fill = factor(region)), stat="identity") +
   xlab("Source District Number") +
   ylab("Number of trips") +
   ggtitle("Trips from Makeni Town, Bombali") +
   scale_fill_discrete(name = "Region",labels=c("East","North","South", "West")) +
-  theme_bw()
+  theme_bw() + coord_flip()
 
 ggplot(data=data_Bombali_districts) +
-  geom_bar(aes(x=factor(district), y=to, fill = factor(region)), stat="identity") +
+  geom_bar(aes(x=district, y=to, fill = factor(region)), stat="identity") +
   xlab("Destination District Number") +
   ylab("Number of trips") +
   ggtitle("Trips to Makeni Town, Bombali") +
   scale_fill_discrete(name = "Region", labels=c("East","North","South", "West")) +
-  theme_bw()
+  theme_bw() + coord_flip()
 
 #### Spatial for Bombali ####
 
