@@ -412,6 +412,9 @@ for (dist in data_Bombali_districts$district){
     sum(data_admin3[data_admin3$Chief_To == 2102 & floor(data_admin3$Chief_From/100) == dist, "cum_trips"])
 }
 data_Bombali_districts$region <- floor(data_Bombali_districts$district/10)
+data_Bombali_districts$region <- factor(data_Bombali_districts$region, 
+                                        levels = c(2, 4, 1, 3),
+                                        labels = c("North", "West", "East", "South"))
 
 data_Bombali_districts$district_name <- c("Kailahun", "Kenema", "Kono", "Bombali", "Kambia", "Koinadugu", "Port Loko", "Tonkolili", "Bo", "Bonthe", "Moyamba", "Pujehun", "Western Area Rural", "Western Area Urban")
 
@@ -421,16 +424,18 @@ data_Bombali_districts$district <- factor(data_Bombali_districts$district, level
                                           labels = data_Bombali_districts$district_name)
 
 ggplot(data=data_Bombali_districts) +
-  geom_bar(aes(x=district, y=from, fill = factor(region)), stat="identity") +
-  xlab("Source District Number") +
+  geom_bar(aes(x=district, y=from, fill = region), stat="identity") +
+#   xlab("Destination District Number") +
   ylab("Number of trips") +
   ggtitle("Trips from Makeni Town, Bombali") +
-  scale_fill_discrete(name = "Region",labels=c("East","North","South", "West")) +
-  theme_bw() + coord_flip()
+  scale_fill_discrete(name = "Region") +
+  theme_bw() + coord_flip() +
+  theme(text = element_text(size=18)) +
+  theme(axis.title.y = element_blank())
 
 ggplot(data=data_Bombali_districts) +
   geom_bar(aes(x=district, y=to, fill = factor(region)), stat="identity") +
-  xlab("Destination District Number") +
+  xlab("Source District Number") +
   ylab("Number of trips") +
   ggtitle("Trips to Makeni Town, Bombali") +
   scale_fill_discrete(name = "Region", labels=c("East","North","South", "West")) +
@@ -467,14 +472,15 @@ for (row in 1:nrow(admin3.sp.fort)){
 }
 
 ggplot() +
-  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(from_bombali+1), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = from_bombali, group = group), colour = "darkgrey") +
   geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2102,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
   coord_equal() +
   theme_bw() + ggtitle("Destinations from Makeni Town, Bombali") +
-  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white") +
+  scale_fill_continuous(name = "Number of Trips", low = "white") +
   geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1) +
+  geom_polygon(data = admin2.sp.fort, aes(x=long, y=lat, group=group), colour = "black", fill=NA, linetype = 1, lwd = 0.3) +
   geom_point(aes(x=robuya_coords[2], y=robuya_coords[1]), shape = "X", size=3, color="red")
-
+  
 ggplot() +
   geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = from_bombali/sum(bombali$from_bombali), group = group), colour = "darkgrey") +
   geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2102,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
@@ -485,11 +491,11 @@ ggplot() +
   geom_point(aes(x=robuya_coords[2], y=robuya_coords[1]), shape = "X", size=3, color="red")
 
 ggplot() +
-  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(to_bombali+1), group = group), colour = "darkgrey") +
+  geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = to_bombali, group = group), colour = "darkgrey") +
   geom_polygon(data = admin3.sp.fort[admin3.sp.fort$CHCODE == 2102,], aes(x = long, y = lat, group = group), size=1.2, colour = "yellow", fill = "white") +
   coord_equal() +
   theme_bw() + ggtitle("Sources to Makeni Town, Bombali") +
-  scale_fill_continuous(name = "Log10(Number of Trips)", low = "white")+
+  scale_fill_continuous(name = "Number of Trips", low = "white")+
   geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1) +
   geom_point(aes(x=robuya_coords[2], y=robuya_coords[1]), shape = "X", size=3, color="red")
 
@@ -536,6 +542,14 @@ sum(data_admin3[data_admin3$Chief_From < 4000, "cum_trips"])
 sum(data_admin3[data_admin3$Chief_From > 4000, "cum_trips"]) / sum(data_admin3[, "cum_trips"])
 sum(data_admin3[data_admin3$Chief_From > 4000 & data_admin3$Chief_To > 4000, "cum_trips"]) / sum(data_admin3[, "cum_trips"])
 sum(data_admin3[data_admin3$Chief_From > 4000 | data_admin3$Chief_To > 4000, "cum_trips"]) / sum(data_admin3[, "cum_trips"])
+
+# What proportion of travel is through Makeni Town?
+sum(data_admin3[data_admin3$Chief_From == 2102, "cum_trips"])
+sum(data_admin3[data_admin3$Chief_From == 2102 | data_admin3$Chief_To == 2102, "cum_trips"])
+sum(data_admin3[data_admin3$Chief_From != 2102, "cum_trips"])
+
+sum(data_admin3[data_admin3$Chief_From == 2102, "cum_trips"]) / sum(data_admin3[, "cum_trips"])
+sum(data_admin3[data_admin3$Chief_From == 2102 | data_admin3$Chief_To == 2102, "cum_trips"]) / sum(data_admin3[, "cum_trips"])
 
 # Map of number of trips from each chiefdom
 admin3.sp.fort$trips_from <- NA
@@ -597,7 +611,7 @@ for (row in 1:nrow(data_admin3)){
   inter <- gcIntermediate(c(lon_1, lat_1), c(lon_2, lat_2), n=50, addStartEnd=TRUE)
   
   colindex <- colors[ceiling(data_admin3[row,"cum_trips"] / range * 100)]
-  lines(inter, col = colindex, lwd = 0.8)
+  lines(inter, col = colindex, lwd = (2*ceiling(data_admin3[row,"cum_trips"] / range))^2)
 }
 
 # Shade connections weighted by log of count, only plot top 50%
@@ -623,7 +637,10 @@ for (row in start:nrow(data_admin3)){
     
   lines(inter, col = colors[weight*100], lwd = 3*weight^2)
 }
-points(towers.fort$Long, towers.fort$Lat)
+# points(towers.fort$Long, towers.fort$Lat)
+text(x = robuya_coords[2]+0.25, y = robuya_coords[1]-0.05, label = "Makeni", col = "black")
+text(x = robuya_coords[2]-1.65, y = robuya_coords[1]-0.45, label = "Freetown", col = "black")
+# text(x = robuya_coords[2]+0.5, y = robuya_coords[1]-0.8, label = "Bo", col = "white")
 
 # Travel from Freetown. shade connections weighted by log of count
 # dev.off()
