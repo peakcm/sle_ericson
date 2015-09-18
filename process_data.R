@@ -399,6 +399,16 @@ pie(x = data_admin3[data_admin3$Chief_From == 2102,"cum_trips"], labels = lbls, 
 lbls <- paste(data_admin3[data_admin3$Chief_To == 2102,"Chief_From"], "\n", round(data_admin3[data_admin3$Chief_To == 2102,"cum_trips"]/sum(data_admin3[data_admin3$Chief_To == 2102,"cum_trips"])*100, 0),"%", sep="")
 pie(x = data_admin3[data_admin3$Chief_To == 2102,"cum_trips"], labels = lbls, main="Chiefdom Departures\n to Makeni Town, Bombali (2102)", )
 
+# List of chiefdom destinations
+data_admin3.From2102 <- data_admin3[data_admin3$Chief_From == 2102,c("Chief_From","Chief_To", "cum_trips")]
+# View(data_admin3.From2102[order(-data_admin3.From2102$cum_trips),])
+sum(data_admin3.From2102[data_admin3.From2102$Chief_To == 1212 | data_admin3.From2102$Chief_To == 1313,"cum_trips" ]) / sum(data_admin3.From2102[data_admin3.From2102$Chief_To < 2000, "cum_trips"])
+sum(data_admin3.From2102[data_admin3.From2102$Chief_To == 3108, "cum_trips"]) / sum(data_admin3.From2102[data_admin3.From2102$Chief_To > 3000 & data_admin3.From2102$Chief_To < 4000, "cum_trips"])
+
+
+data_admin3.From2102[data_admin3.From2102$Chief_To == 1212 | data_admin3.From2102$Chief_To == 1313, ] / data_admin3.From2102[data_admin3.From2102$Chief_To < 2000, ])
+
+
 # Pie chart (Districts)
 data_Bombali_districts <- data.frame(sort(unique(data_admin2[,1])))
 names(data_Bombali_districts) <- c("district")
@@ -614,16 +624,23 @@ for (row in 1:nrow(data_admin3)){
   lines(inter, col = colindex, lwd = (2*ceiling(data_admin3[row,"cum_trips"] / range))^2)
 }
 
-# Shade connections weighted by log of count, only plot top 50%
+# Shade connections weighted by log of count
 data_admin3 <- data_admin3[order(data_admin3$cum_trips),] #sort so the heavier connections are drawn later
 
-start <- round(nrow(data_admin3)*0.50)
 range <- max(log(data_admin3$cum_trips))
 colors <- colorRampPalette(brewer.pal(9,"Blues"))(100)
+# To set transparency to ramp up with color
+for (i in 1:length(colors)){
+  if (i < 20){alpha <- 20
+  } else if (i > 80){alpha <- 80
+  } else {alpha <- i}
+  
+  colors[i] <- paste0(colors[i], as.character(alpha))
+}
 
 # dev.off()
 plot(admin3.sp)
-for (row in start:nrow(data_admin3)){
+for (row in 1:nrow(data_admin3)){
   from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
   to <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_To"])
   
@@ -635,11 +652,11 @@ for (row in start:nrow(data_admin3)){
   
   weight <- ceiling(log(data_admin3[row,"cum_trips"]) / range * 100) / 100
     
-  lines(inter, col = colors[weight*100], lwd = 3*weight^2)
+  lines(inter, col = colors[weight*100], lwd = (2.5*weight)^2)
 }
 # points(towers.fort$Long, towers.fort$Lat)
-text(x = robuya_coords[2]+0.25, y = robuya_coords[1]-0.05, label = "Makeni", col = "black")
-text(x = robuya_coords[2]-1.65, y = robuya_coords[1]-0.45, label = "Freetown", col = "black")
+text(x = robuya_coords[2]+0.25, y = robuya_coords[1]-0.05, label = "Makeni", col = "black", font = 2)
+text(x = robuya_coords[2]-1.65, y = robuya_coords[1]-0.45, label = "Freetown", col = "black", font = 2)
 # text(x = robuya_coords[2]+0.5, y = robuya_coords[1]-0.8, label = "Bo", col = "white")
 
 # Travel from Freetown. shade connections weighted by log of count
@@ -721,6 +738,29 @@ for (row in 1:nrow(data_admin3)){
   
   lines(inter, col = colors[weight*100], lwd = 3*weight^2)
 }
+
+
+# Travel from Makeni shade connections weighted by log of count
+# dev.off()
+plot(admin3.sp)
+for (row in 1:nrow(data_admin3)){
+  from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
+  to <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_To"])
+  
+  if (data_admin3[row, "Chief_From"] == 2102){
+    lon_1 <- admin3.sp$centroids.Long[from]
+    lat_1 <- admin3.sp$centroids.Lat[from]
+    lon_2 <- admin3.sp$centroids.Long[to]
+    lat_2 <- admin3.sp$centroids.Lat[to]
+    inter <- gcIntermediate(c(lon_1, lat_1), c(lon_2, lat_2), n=50, addStartEnd=TRUE)
+  }
+  
+  weight <- ceiling(log(data_admin3[row,"cum_trips"]) / range * 100) / 100
+  
+  lines(inter, col = colors[weight*100], lwd = (3*weight)^2)
+}
+# text(x = robuya_coords[2]+0.25, y = robuya_coords[1], label = "Makeni", col = "black", font = 2)
+# text(x = robuya_coords[2]-1.65, y = robuya_coords[1]-0.45, label = "Freetown", col = "black", font = 2)
 
 #### Country-wide temporal series ####
 # Melt data_admin3 call data
