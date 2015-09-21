@@ -111,7 +111,7 @@ admin3.sp <- spCbind(admin3.sp, centroids$Lat)
 admin3.sp.fort <- fortify(admin3.sp, region = "CHCODE", )
 admin3.sp.fort$CHCODE <- as.numeric(admin3.sp.fort$id)
 
-# Create a shapefile for Sierra Leone Admin 3
+# Create a shapefile for Sierra Leone Admin 2
 work.dir <- "/Users/peakcm/Documents/SLE_Mobility/Arc GIS/Open Humanitarian Data Repository/Sierra_Leone_Districts_Admin_2_2012"
 admin2.sp <- readOGR(work.dir, layer = 'Sierra_Leone_Districts_Admin_2_2012')
 centroids <- data.frame(getSpPPolygonsLabptSlots(admin2.sp))
@@ -120,6 +120,16 @@ admin2.sp <- spCbind(admin2.sp, centroids$Long)
 admin2.sp <- spCbind(admin2.sp, centroids$Lat)
 admin2.sp.fort <- fortify(admin2.sp, region = "DISCODE", )
 admin2.sp.fort$DISCODE <- as.numeric(admin2.sp.fort$id)
+
+# Create a shapefile for Sierra Leone Admin 1
+work.dir <- "/Users/peakcm/Documents/SLE_Mobility/Arc GIS/Open Humanitarian Data Repository/Sierra_Leone_Provinces_-_Admin_1_2012"
+admin1.sp <- readOGR(work.dir, layer = 'Sierra_Leone_Provinces_-_Admin_1_2012')
+centroids <- data.frame(getSpPPolygonsLabptSlots(admin1.sp))
+names(centroids) <- c("Long", "Lat")
+admin1.sp <- spCbind(admin1.sp, centroids$Long)
+admin1.sp <- spCbind(admin1.sp, centroids$Lat)
+admin1.sp.fort <- fortify(admin1.sp, region = "DISCODE", )
+admin1.sp.fort$RCODE <- as.numeric(admin1.sp.fort$id)
 
 # Create a dataset with estimated travel times between districts from WHO Mr. Yarabah Conteh
 names <- c("Bo", "Kaliahun", "Freetown", "Bombali", "Port Loko", "Bonthe", "Kambia", "Kenema", "Koindagu", "Kono", "Moyamba", "Pujehun", "Tonkolili", "Freetown_Rural")
@@ -160,10 +170,30 @@ plot(data_admin3[data_admin3$Chief_From == 2505, "cum_trips"],
 
 # Pie chart (Chiefdoms)
 lbls <- paste(data_admin3[data_admin3$Chief_From == 2505,"Chief_To"], "\n", round(data_admin3[data_admin3$Chief_From == 2505,"cum_trips"]/sum(data_admin3[data_admin3$Chief_From == 2505,"cum_trips"])*100, 0),"%", sep="")
-pie(x = data_admin3[data_admin3$Chief_From == 2505,"cum_trips"], labels = lbls, main="Chiefdom D1estinations from\nKholifa Rowala, Tonkolili (2505)", )
+pie(x = data_admin3[data_admin3$Chief_From == 2505,"cum_trips"], labels = lbls, main="Chiefdom Destinations from\nKholifa Rowala, Tonkolili (2505)", )
 
 lbls <- paste(data_admin3[data_admin3$Chief_To == 2505,"Chief_From"], "\n", round(data_admin3[data_admin3$Chief_To == 2505,"cum_trips"]/sum(data_admin3[data_admin3$Chief_To == 2505,"cum_trips"])*100, 0),"%", sep="")
 pie(x = data_admin3[data_admin3$Chief_To == 2505,"cum_trips"], labels = lbls, main="Chiefdom Departures to\nKholifa Rowala, Tonkolili (2505)", )
+
+# List of chiefdom destinations
+data_admin3.From2505 <- data_admin3[data_admin3$Chief_From == 2505,c("Chief_From","Chief_To", "cum_trips")]
+# View(data_admin3.From2505[order(-data_admin3.From2505$cum_trips),])
+sum(data_admin3.From2505[data_admin3.From2505$Chief_To == 2102,"cum_trips" ]) / sum(data_admin3.From2505[, "cum_trips"]) # 33.6% of all trips are to Makeni Town
+
+sum(data_admin3.From2505[data_admin3.From2505$Chief_To == 2102,"cum_trips" ]) / sum(data_admin3.From2505[data_admin3.From2505$Chief_To >= 2000 & data_admin3.From2505$Chief_To < 3000, "cum_trips"]) # 40.2% of travel to the North region is to Makeni Town
+
+sum(data_admin3.From2505[data_admin3.From2505$Chief_To == 2102,"cum_trips" ]) / sum(data_admin3.From2505[data_admin3.From2505$Chief_To >= 2100 & data_admin3.From2505$Chief_To < 2200, "cum_trips"]) # 94.3% of travel to Bombali District is to Makeni Town
+
+sum(data_admin3.From2505[data_admin3.From2505$Chief_To >= 2100 & data_admin3.From2505$Chief_To < 2200,"cum_trips" ]) / sum(data_admin3.From2505[, "cum_trips"]) # 35.7% of all travel is to Bombali District
+
+sum(data_admin3.From2505[data_admin3.From2505$Chief_To >= 2500 & data_admin3.From2505$Chief_To < 2600,"cum_trips" ]) / sum(data_admin3.From2505[, "cum_trips"]) # 44.0% of all travel is to Tonkolili District
+
+sum(data_admin3.From2505[data_admin3.From2505$Chief_To == 2510 ,"cum_trips" ]) / sum(data_admin3.From2505[data_admin3.From2505$Chief_To >= 2500 & data_admin3.From2505$Chief_To < 2600, "cum_trips"]) # 47.1% of all travel to Tonkolili District is to Tane chiefdom
+
+sum(data_admin3.From2505[data_admin3.From2505$Chief_To == 2510 ,"cum_trips" ]) / sum(data_admin3.From2505[data_admin3.From2505$Chief_To >= 2500 & data_admin3.From2505$Chief_To < 2600, "cum_trips"]) # 47.1% of all travel to Tonkolili District is to Tane chiefdom
+
+sum(data_admin3.From2505[data_admin3.From2505$Chief_To == 2102 | data_admin3.From2505$Chief_To == 2102,"cum_trips" ]) / sum(data_admin3.From2505[data_admin3.From2505$Chief_To < 2000, "cum_trips"])
+sum(data_admin3.From2505[data_admin3.From2505$Chief_To == 3108, "cum_trips"]) / sum(data_admin3.From2505[data_admin3.From2505$Chief_To > 3000 & data_admin3.From2505$Chief_To < 4000, "cum_trips"])
 
 # Pie chart (Districts)
 data_Tonk_districts <- data.frame(sort(unique(data_admin2[,1])))
@@ -178,28 +208,42 @@ for (dist in data_Tonk_districts$district){
     sum(data_admin3[data_admin3$Chief_To == 2505 & floor(data_admin3$Chief_From/100) == dist, "cum_trips"])
 }
 data_Tonk_districts$region <- floor(data_Tonk_districts$district/10)
+data_Tonk_districts$region <- factor(data_Tonk_districts$region, 
+                                        levels = c(2, 4, 1, 3),
+                                        labels = c("North", "West", "East", "South"))
 
-# lbls <- paste(data_Tonk_districts$district, "\n", round(data_Tonk_districts$from/sum(data_Tonk_districts$from)*100, 0),"%", sep="")
-# pie(x = data_Tonk_districts$from, labels = lbls, main="District Destinations\n from Kholifa Rowala, Tonkolili (2505)")
-# 
-# lbls <- paste(data_Tonk_districts$district, "\n", round(data_Tonk_districts$to/sum(data_Tonk_districts$to)*100, 0),"%", sep="")
-# pie(x = data_Tonk_districts$to, labels = lbls, main="District Destinations\n to Kholifa Rowala, Tonkolili (2505)")
+data_Tonk_districts$district_name <- c("Kailahun", "Kenema", "Kono", "Bombali", "Kambia", "Koinadugu", "Port Loko", "Tonkolili", "Bo", "Bonthe", "Moyamba", "Pujehun", "Western Area Rural", "Western Area Urban")
 
-ggplot(data=data_Tonk_districts) +
-  geom_bar(aes(x=factor(district), y=to, fill = factor(region)), stat="identity") +
-  xlab("Destination District Number") +
-  ylab("Number of trips") +
-  ggtitle("Trips to Kholifa Rowala, Tonkolili") +
-  scale_fill_discrete(name = "Region", labels=c("East","North","South", "West")) +
-  theme_bw()
+data_Tonk_districts <- data_Tonk_districts[order(data_Tonk_districts$to),] # Sort data so for horizontal bar chart
+
+data_Tonk_districts$district <- factor(data_Tonk_districts$district, levels = data_Tonk_districts$district, 
+                                          labels = data_Tonk_districts$district_name)
 
 ggplot(data=data_Tonk_districts) +
-  geom_bar(aes(x=factor(district), y=from, fill = factor(region)), stat="identity") +
-  xlab("Source District Number") +
+  geom_bar(aes(x=district, y=from, fill = region), stat="identity") +
+  #   xlab("Destination District Number") +
   ylab("Number of trips") +
   ggtitle("Trips from Kholifa Rowala, Tonkolili") +
-  scale_fill_discrete(name = "Region",labels=c("East","North","South", "West")) +
-  theme_bw()
+  scale_fill_discrete(name = "Region") +
+  theme_bw() + coord_flip() +
+  theme(text = element_text(size=18)) +
+  theme(axis.title.y = element_blank())
+# 
+# ggplot(data=data_Tonk_districts) +
+#   geom_bar(aes(x=factor(district), y=to, fill = factor(region)), stat="identity") +
+#   xlab("Destination District Number") +
+#   ylab("Number of trips") +
+#   ggtitle("Trips to Kholifa Rowala, Tonkolili") +
+#   scale_fill_discrete(name = "Region", labels=c("East","North","South", "West")) +
+#   theme_bw()
+# 
+# ggplot(data=data_Tonk_districts) +
+#   geom_bar(aes(x=factor(district), y=from, fill = factor(region)), stat="identity") +
+#   xlab("Source District Number") +
+#   ylab("Number of trips") +
+#   ggtitle("Trips from Kholifa Rowala, Tonkolili") +
+#   scale_fill_discrete(name = "Region",labels=c("East","North","South", "West")) +
+#   theme_bw()
 
 #### Spatial for Tonkolili ####
 tonk <- data.frame(matrix(rep(NA, nrow(admin3.sp)*3), ncol=3))
@@ -489,7 +533,9 @@ ggplot() +
   scale_fill_continuous(name = "Number of Trips", low = "white") +
   geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1) +
   geom_polygon(data = admin2.sp.fort, aes(x=long, y=lat, group=group), colour = "black", fill=NA, linetype = 1, lwd = 0.3) +
-  geom_point(aes(x=robuya_coords[2], y=robuya_coords[1]), shape = "X", size=3, color="red")
+  geom_polygon(data = admin1.sp.fort, aes(x=long, y=lat, group=group), colour = "black", fill=NA, linetype = 1, lwd = 0.3) +
+  geom_point(aes(x=robuya_coords[2], y=robuya_coords[1]), shape = "X", size=3, color="red") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + theme(panel.border = element_blank())
   
 ggplot() +
   geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = from_bombali/sum(bombali$from_bombali), group = group), colour = "darkgrey") +
@@ -640,6 +686,13 @@ for (i in 1:length(colors)){
 
 # dev.off()
 plot(admin3.sp)
+# plot(admin1.sp[admin1.sp$DISCODE == 2,], add=TRUE, border = "red", lwd = 3, lty = 2)
+# plot(admin1.sp[admin1.sp$DISCODE == 3,], add=TRUE, border = "purple", lwd = 3, lty = 2)
+# plot(admin1.sp[admin1.sp$DISCODE == 1,], add=TRUE, border = "turquoise", lwd = 3, lty = 2)
+# plot(admin1.sp[admin1.sp$DISCODE == 4,], add=TRUE, border = "green", lwd = 3, lty = 2)
+
+geom_polygon(data = admin1.sp.fort, aes(x=long, y=lat, group=group), colour = "black", fill=NA, linetype = 1, lwd = 0.3) +
+  
 for (row in 1:nrow(data_admin3)){
   from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
   to <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_To"])
@@ -676,7 +729,7 @@ for (row in 1:nrow(data_admin3)){
   
   weight <- ceiling(log(data_admin3[row,"cum_trips"]) / range * 100) / 100
   
-  lines(inter, col = colors[weight*100], lwd = 3*weight^2)
+  lines(inter, col = colors[weight*100], lwd = (2.5*weight)^2)
 }
 
 # Travel from Bo Town shade connections weighted by log of count
@@ -696,7 +749,7 @@ for (row in 1:nrow(data_admin3)){
   
   weight <- ceiling(log(data_admin3[row,"cum_trips"]) / range * 100) / 100
   
-  lines(inter, col = colors[weight*100], lwd = 3*weight^2)
+  lines(inter, col = colors[weight*100], lwd = (2.5*weight)^2)
 }
 
 # Travel from Kenema Town. shade connections weighted by log of count
@@ -716,7 +769,7 @@ for (row in 1:nrow(data_admin3)){
   
   weight <- ceiling(log(data_admin3[row,"cum_trips"]) / range * 100) / 100
   
-  lines(inter, col = colors[weight*100], lwd = 3*weight^2)
+  lines(inter, col = colors[weight*100], lwd = (2.5*weight)^2)
 }
 
 # Travel from Tonko Limba shade connections weighted by log of count
@@ -736,13 +789,32 @@ for (row in 1:nrow(data_admin3)){
   
   weight <- ceiling(log(data_admin3[row,"cum_trips"]) / range * 100) / 100
   
-  lines(inter, col = colors[weight*100], lwd = 3*weight^2)
+  lines(inter, col = colors[weight*100], lwd = (2.5*weight)^2)
 }
 
 
 # Travel from Makeni shade connections weighted by log of count
 # dev.off()
+
+# colors <- colorRampPalette(brewer.pal(9,"Greys"))(100)
+# # To set transparency to ramp up with color
+# for (i in 1:length(colors)){
+#   if (i < 20){alpha <- 20
+#   } else if (i > 80){alpha <- 80
+#   } else {alpha <- i}
+#   
+#   colors[i] <- paste0(colors[i], as.character(alpha))
+# }
+
 plot(admin3.sp)
+
+plot(admin1.sp[admin1.sp$DISCODE == 2,], add=TRUE, col = "#F35D5A95")
+plot(admin1.sp[admin1.sp$DISCODE == 3,], add=TRUE, col = "#B95EFF95")
+plot(admin1.sp[admin1.sp$DISCODE == 1,], add=TRUE, col = "#17B2B795")
+plot(admin1.sp[admin1.sp$DISCODE == 4,], add=TRUE, col = "#6BA10395")
+
+plot(admin3.sp, col = NA, add = TRUE)
+
 for (row in 1:nrow(data_admin3)){
   from <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_From"])
   to <- which(admin3.sp$CHCODE==data_admin3[row, "Chief_To"])
@@ -757,7 +829,7 @@ for (row in 1:nrow(data_admin3)){
   
   weight <- ceiling(log(data_admin3[row,"cum_trips"]) / range * 100) / 100
   
-  lines(inter, col = colors[weight*100], lwd = (3*weight)^2)
+  lines(inter, col = colors[weight*100], lwd = (2.5*weight)^2)
 }
 # text(x = robuya_coords[2]+0.25, y = robuya_coords[1], label = "Makeni", col = "black", font = 2)
 # text(x = robuya_coords[2]-1.65, y = robuya_coords[1]-0.45, label = "Freetown", col = "black", font = 2)
