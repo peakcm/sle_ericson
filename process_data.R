@@ -161,6 +161,10 @@ for (i in 1:nrow(travel.times)){
   }
 }
 
+# Import population data
+setwd("/Users/peakcm/Documents/2014 Cholera OCV/Data - Raw/Population")
+data_chief_pop <- read.csv(file = "SL_Chiefdom_Codes_Pop.csv")
+
 #### Tonkolili Plots ####
 # Focus on Kholifa Rowala Chiefdom (2505) in Tonkolili District
 hist(log(data_admin3[data_admin3$Chief_From == 2505, "cum_trips"]), xlab = "log(cumulative trips)", main = "Trips from Kholifa Rowala, Tonkolili")
@@ -347,19 +351,6 @@ sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2201,"cum_trips" ]) / 
 sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2203,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2200 & data_admin3.From2207$Chief_To < 2300, "cum_trips"]) # 25.8% of travel to the Kambia District is to Magbema Chiefdom
 
 sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2201 | data_admin3.From2207$Chief_To == 2203,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2200 & data_admin3.From2207$Chief_To < 2300, "cum_trips"]) # 97.1% of travel to the Kambia District is to Bramala or Magbema Chiefdoms
-
-sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2102,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2100 & data_admin3.From2207$Chief_To < 2200, "cum_trips"]) # 94.3% of travel to Bombali District is to Makeni Town
-
-sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2100 & data_admin3.From2207$Chief_To < 2200,"cum_trips" ]) / sum(data_admin3.From2207[, "cum_trips"]) # 35.7% of all travel is to Bombali District
-
-sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2500 & data_admin3.From2207$Chief_To < 2600,"cum_trips" ]) / sum(data_admin3.From2207[, "cum_trips"]) # 44.0% of all travel is to Tonkolili District
-
-sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2510 ,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2500 & data_admin3.From2207$Chief_To < 2600, "cum_trips"]) # 47.1% of all travel to Tonkolili District is to Tane chiefdom
-
-sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2510 ,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2500 & data_admin3.From2207$Chief_To < 2600, "cum_trips"]) # 47.1% of all travel to Tonkolili District is to Tane chiefdom
-
-sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2102 | data_admin3.From2207$Chief_To == 2102,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To < 2000, "cum_trips"])
-sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 3108, "cum_trips"]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To > 3000 & data_admin3.From2207$Chief_To < 4000, "cum_trips"])
 
 # Pie chart (Districts)
 data_Kambia_districts <- data.frame(sort(unique(data_admin2[,1])))
@@ -639,8 +630,24 @@ ggplot() +
   geom_point(aes(x=robuya_coords[2], y=robuya_coords[1]), shape = "X", size=3, color="red")
 
 #### Find Chiefdoms without towers ####
-length(unique(data_admin3$Chief_From))
-length(unique(towers$CHCODE))
+length(unique(data_admin3$Chief_From)) / length(unique(towers$CHCODE)) #97% of chiefdoms with towers have travel reports
+
+(length(unique(towers$CHCODE))) / (length(admin3.sp$CHCODE)) #58.6% of chiefdoms in Sierra Leone have at least one tower
+
+unique(towers$CHCODE)
+sort(admin3.sp$CHCODE)
+sort(data_chief_pop$CHCODE) # aggregates Western Area
+
+is.element(unique(towers$CHCODE), admin3.sp$CHCODE)
+admin3.sp$CHCODE[is.element(admin3.sp$CHCODE, unique(towers$CHCODE))==1] #Chiefdoms with towers
+admin3.sp$CHCODE[is.element(admin3.sp$CHCODE, unique(towers$CHCODE))==0] #Chiefdoms without towers
+
+data_chief_pop[is.element(data_chief_pop$CHCODE, admin3.sp$CHCODE[is.element(admin3.sp$CHCODE, unique(towers$CHCODE))==0]), ]
+
+hist(data_chief_pop[is.element(data_chief_pop$CHCODE, admin3.sp$CHCODE[is.element(admin3.sp$CHCODE, unique(towers$CHCODE))==0]), "Pop_2012_est"])
+
+sum(data_chief_pop[is.element(data_chief_pop$CHCODE, admin3.sp$CHCODE[is.element(admin3.sp$CHCODE, unique(towers$CHCODE))==0]), "Pop_2012_est"]) /
+sum(data_chief_pop[, "Pop_2012_est"])
 
 ggplot() +
   geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(from_tonk+1), group = group), colour = "darkgrey") +
