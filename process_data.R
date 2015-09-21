@@ -178,6 +178,11 @@ pie(x = data_admin3[data_admin3$Chief_To == 2505,"cum_trips"], labels = lbls, ma
 # List of chiefdom destinations
 data_admin3.From2505 <- data_admin3[data_admin3$Chief_From == 2505,c("Chief_From","Chief_To", "cum_trips")]
 # View(data_admin3.From2505[order(-data_admin3.From2505$cum_trips),])
+
+sum(data_admin3.From2505[data_admin3.From2505$Chief_To >= 2000 & data_admin3.From2505$Chief_To < 3000,"cum_trips" ]) / sum(data_admin3.From2505[, "cum_trips"]) # 83.6% of all travel is to the North region
+
+sum(data_admin3.From2505[data_admin3.From2505$Chief_To > 4000 ,"cum_trips" ]) / sum(data_admin3.From2505[data_admin3.From2505$Chief_To < 2000 | data_admin3.From2505$Chief_To >= 3000, "cum_trips"]) # 73.8% of all travel outside of the North region is to Western Area
+
 sum(data_admin3.From2505[data_admin3.From2505$Chief_To == 2102,"cum_trips" ]) / sum(data_admin3.From2505[, "cum_trips"]) # 33.6% of all trips are to Makeni Town
 
 sum(data_admin3.From2505[data_admin3.From2505$Chief_To == 2102,"cum_trips" ]) / sum(data_admin3.From2505[data_admin3.From2505$Chief_To >= 2000 & data_admin3.From2505$Chief_To < 3000, "cum_trips"]) # 40.2% of travel to the North region is to Makeni Town
@@ -228,7 +233,7 @@ ggplot(data=data_Tonk_districts) +
   theme_bw() + coord_flip() +
   theme(text = element_text(size=18)) +
   theme(axis.title.y = element_blank())
-# 
+
 # ggplot(data=data_Tonk_districts) +
 #   geom_bar(aes(x=factor(district), y=to, fill = factor(region)), stat="identity") +
 #   xlab("Destination District Number") +
@@ -320,6 +325,75 @@ pie(x = data_admin3[data_admin3$Chief_From == 2207,"cum_trips"], labels = lbls, 
 
 lbls <- paste(data_admin3[data_admin3$Chief_To == 2207,"Chief_From"], "\n", round(data_admin3[data_admin3$Chief_To == 2207,"cum_trips"]/sum(data_admin3[data_admin3$Chief_To == 2207,"cum_trips"])*100, 0),"%", sep="")
 pie(x = data_admin3[data_admin3$Chief_To == 2207,"cum_trips"], labels = lbls, main="Chiefdom Departures\n to Tonko Limba, Kambia (2207)", )
+
+# List of chiefdom destinations
+data_admin3.From2207 <- data_admin3[data_admin3$Chief_From == 2207,c("Chief_From","Chief_To", "cum_trips")]
+# View(data_admin3.From2207[order(-data_admin3.From2207$cum_trips),])
+
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2000 & data_admin3.From2207$Chief_To < 3000,"cum_trips" ]) / sum(data_admin3.From2207[, "cum_trips"]) # 86.4% of all travel is to the North region
+
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To > 4000 ,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To < 2000 | data_admin3.From2207$Chief_To >= 3000, "cum_trips"]) # 95.0% of all travel outside of the North region is to Western Area
+
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2102,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2100 & data_admin3.From2207$Chief_To < 2200, "cum_trips"]) # Only 9.9% of all trips to Bombali District are to Makeni Town
+
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2112,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2100 & data_admin3.From2207$Chief_To < 2200, "cum_trips"]) # 52.1% of all trips to Bombali District are to Sella Limba
+
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2111,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2100 & data_admin3.From2207$Chief_To < 2200, "cum_trips"]) # 35.5% of all trips to Bombali District are to Sandra Tenda
+
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2111 | data_admin3.From2207$Chief_To == 2112,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2100 & data_admin3.From2207$Chief_To < 2200, "cum_trips"]) # 87.7% of all trips to Bombali District are to Sella Limba or Sandra Tenda
+
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2201,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2200 & data_admin3.From2207$Chief_To < 2300, "cum_trips"]) # 71.2% of travel to the Kambia District is to Bramala Chiefdom
+
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2203,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2200 & data_admin3.From2207$Chief_To < 2300, "cum_trips"]) # 25.8% of travel to the Kambia District is to Magbema Chiefdom
+
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2201 | data_admin3.From2207$Chief_To == 2203,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2200 & data_admin3.From2207$Chief_To < 2300, "cum_trips"]) # 97.1% of travel to the Kambia District is to Bramala or Magbema Chiefdoms
+
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2102,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2100 & data_admin3.From2207$Chief_To < 2200, "cum_trips"]) # 94.3% of travel to Bombali District is to Makeni Town
+
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2100 & data_admin3.From2207$Chief_To < 2200,"cum_trips" ]) / sum(data_admin3.From2207[, "cum_trips"]) # 35.7% of all travel is to Bombali District
+
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2500 & data_admin3.From2207$Chief_To < 2600,"cum_trips" ]) / sum(data_admin3.From2207[, "cum_trips"]) # 44.0% of all travel is to Tonkolili District
+
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2510 ,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2500 & data_admin3.From2207$Chief_To < 2600, "cum_trips"]) # 47.1% of all travel to Tonkolili District is to Tane chiefdom
+
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2510 ,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To >= 2500 & data_admin3.From2207$Chief_To < 2600, "cum_trips"]) # 47.1% of all travel to Tonkolili District is to Tane chiefdom
+
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 2102 | data_admin3.From2207$Chief_To == 2102,"cum_trips" ]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To < 2000, "cum_trips"])
+sum(data_admin3.From2207[data_admin3.From2207$Chief_To == 3108, "cum_trips"]) / sum(data_admin3.From2207[data_admin3.From2207$Chief_To > 3000 & data_admin3.From2207$Chief_To < 4000, "cum_trips"])
+
+# Pie chart (Districts)
+data_Kambia_districts <- data.frame(sort(unique(data_admin2[,1])))
+names(data_Kambia_districts) <- c("district")
+data_Kambia_districts$from <- NA
+data_Kambia_districts$to <- NA
+for (dist in data_Kambia_districts$district){
+  cat(dist, "\n")
+  data_Kambia_districts[data_Kambia_districts$district == dist, "from"] <- 
+    sum(data_admin3[data_admin3$Chief_From == 2207 & floor(data_admin3$Chief_To/100) == dist, "cum_trips"])
+  data_Kambia_districts[data_Kambia_districts$district == dist, "to"] <- 
+    sum(data_admin3[data_admin3$Chief_To == 2207 & floor(data_admin3$Chief_From/100) == dist, "cum_trips"])
+}
+data_Kambia_districts$region <- floor(data_Kambia_districts$district/10)
+data_Kambia_districts$region <- factor(data_Kambia_districts$region, 
+                                     levels = c(2, 4, 1, 3),
+                                     labels = c("North", "West", "East", "South"))
+
+data_Kambia_districts$district_name <- c("Kailahun", "Kenema", "Kono", "Bombali", "Kambia", "Koinadugu", "Port Loko", "Tonkolili", "Bo", "Bonthe", "Moyamba", "Pujehun", "Western Area Rural", "Western Area Urban")
+
+data_Kambia_districts <- data_Kambia_districts[order(data_Kambia_districts$to),] # Sort data so for horizontal bar chart
+
+data_Kambia_districts$district <- factor(data_Kambia_districts$district, levels = data_Kambia_districts$district, 
+                                       labels = data_Kambia_districts$district_name)
+
+ggplot(data=data_Kambia_districts) +
+  geom_bar(aes(x=district, y=from, fill = region), stat="identity") +
+  #   xlab("Destination District Number") +
+  ylab("Number of trips") +
+  ggtitle("Trips from Tonko Limba, Kambia") +
+  scale_fill_discrete(name = "Region") +
+  theme_bw() + coord_flip() +
+  theme(text = element_text(size=18)) +
+  theme(axis.title.y = element_blank())
 
 # Pie chart (Districts)
 data_kambia_districts <- data.frame(sort(unique(data_admin2[,1])))
