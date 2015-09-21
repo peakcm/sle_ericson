@@ -542,6 +542,7 @@ data_Bombali_districts <- data_Bombali_districts[order(data_Bombali_districts$to
 data_Bombali_districts$district <- factor(data_Bombali_districts$district, levels = data_Bombali_districts$district, 
                                           labels = data_Bombali_districts$district_name)
 
+plot <- 
 ggplot(data=data_Bombali_districts) +
   geom_bar(aes(x=district, y=from, fill = region), stat="identity") +
 #   xlab("Destination District Number") +
@@ -551,6 +552,9 @@ ggplot(data=data_Bombali_districts) +
   theme_bw() + coord_flip() +
   theme(text = element_text(size=18)) +
   theme(axis.title.y = element_blank())
+
+setwd("/Users/peakcm/Desktop")
+ggsave(plot, file="MakeniBars.png", dpi = 1000)
 
 ggplot(data=data_Bombali_districts) +
   geom_bar(aes(x=district, y=to, fill = factor(region)), stat="identity") +
@@ -697,13 +701,24 @@ for (chief in unique(admin3.sp.fort$CHCODE)){
   admin3.sp.fort[admin3.sp.fort$CHCODE == chief, "trips_to"] <- sum(data_admin3[data_admin3$Chief_To == chief,"cum_trips"]) 
 }
 
+plot <- 
 ggplot() +
   geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(trips_from+1), group = group), colour = "darkgrey") +
   geom_polygon(data = admin3.sp.fort[is.element(admin3.sp.fort$CHCODE, towers$CHCODE)==0,], aes(x = long, y = lat, group = group), size=1.2, fill = "lightgrey") +
   coord_equal() +
-  theme_bw() + ggtitle("Cumulative Trips From Each Chiefdom") +
-  scale_fill_continuous(name = "Log10(Number of Trips)", low="white", high="darkblue") +
-  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1) 
+  theme_bw() + 
+#   ggtitle("Cumulative Trips From Each Chiefdom") +
+  scale_fill_continuous(name = "Number of Trips",
+                        breaks = c(0, 2, 4, 6),
+                        labels = c("1", "100", "10,000", "1,000,000"),
+                        low="white", high="darkblue") +
+  geom_point(data=towers.fort, aes(x=Long, y=Lat ), color="black", size=1)  +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  theme(panel.border = element_blank()) +
+  theme(axis.ticks = element_blank(), axis.text.y = element_blank(), axis.text.x = element_blank(), axis.title.x=element_blank(), axis.title.y=element_blank())
+
+setwd("/Users/peakcm/Desktop")
+ggsave(plot, file="tripsfromchiefs.png", dpi = 1000)
 
 ggplot() +
   geom_polygon(data = admin3.sp.fort, aes(x = long, y = lat, fill = log10(trips_to+1), group = group), colour = "darkgrey") +
@@ -766,6 +781,8 @@ for (i in 1:length(colors)){
 }
 
 # dev.off()
+# png(file="allroutes.png")
+
 plot(admin3.sp)
 # plot(admin1.sp[admin1.sp$DISCODE == 2,], add=TRUE, border = "red", lwd = 3, lty = 2)
 # plot(admin1.sp[admin1.sp$DISCODE == 3,], add=TRUE, border = "purple", lwd = 3, lty = 2)
