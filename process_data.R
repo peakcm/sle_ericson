@@ -564,6 +564,24 @@ ggplot(data=data_Bombali_districts) +
   scale_fill_discrete(name = "Region", labels=c("East","North","South", "West")) +
   theme_bw() + coord_flip()
 
+# Report proportion of trips instead
+sum_from <- sum(data_Bombali_districts$from)
+plot <- 
+  ggplot(data=data_Bombali_districts) +
+  geom_bar(aes(x=district, y=from/sum_from, fill = region), stat="identity") +
+  #   xlab("Destination District Number") +
+  ylab("Fraction of trips") +
+  ggtitle("Top Destinations of Travel from Makeni Town") +
+  scale_fill_discrete(name = "Region") +
+  theme_bw() + coord_flip() +
+  theme(text = element_text(size=18)) +
+  theme(axis.title.y = element_blank()) +
+  theme(panel.border = element_blank()) +
+  theme(panel.grid.major.y = element_blank(), panel.grid.minor = element_blank())
+
+setwd("/Users/peakcm/Desktop")
+ggsave(plot, file="MakeniBars.png", dpi = 1000)
+
 #### Spatial for Bombali ####
 
 robuya_coords <- c(8.874, -12)
