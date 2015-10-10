@@ -17,7 +17,7 @@ library(geosphere)
 library(RColorBrewer)
 library(reshape2)
 library(RCurl)
-library(plotly)
+# library(plotly)
 
 #### Tasks ####
 # Look at number of trips during quarantine days compared to non
@@ -1271,5 +1271,89 @@ for (i in 1:nrow(towers_dist)){
   }
 }
 write.csv(towers_dist, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/towers_dist.csv", )
+towers_dist <- read.csv("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/towers_dist.csv")
 
+#### Make a table with groupings based on distance ####
+towers_dist <- read.csv("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/towers_dist.csv")
+towers_dist[1:5, 1:5]
 
+groups <- data.frame(towers_dist[,1])
+names(groups) <- c("Tower_ID")
+
+groups$km5 <- NA # Make a group where islands are sets of towers within 5km of all others
+group <- 1
+for (i in 1:nrow(groups)){  
+  neighbors <- c()
+  for (j in 2:nrow(groups)){
+    if (towers_dist[i, j] <= 5){
+      if (is.element(towers_dist[j,1], neighbors) == 0){
+        neighbors <- c(neighbors, towers_dist[j,1])
+      }
+    }
+  }
+  if (sum(is.na(groups[is.element(groups$Tower_ID, neighbors), "km5"])==0) > 0 ){
+    groups[i, "km5"] <- groups[is.element(groups$Tower_ID, neighbors), "km5"][1]
+  } else {
+    groups[i, "km5"] <- group
+    group <- group + 1
+  }
+}
+plot(groups$km5)
+
+groups$km10 <- NA # Make a group where islands are sets of towers within 10km of all others
+group <- 1
+for (i in 1:nrow(groups)){  
+  neighbors <- c()
+  for (j in 2:nrow(groups)){
+    if (towers_dist[i, j] <= 10){
+      if (is.element(towers_dist[j,1], neighbors) == 0){
+        neighbors <- c(neighbors, towers_dist[j,1])
+      }
+    }
+  }
+  if (sum(is.na(groups[is.element(groups$Tower_ID, neighbors), "km10"])==0) > 0 ){
+    groups[i, "km10"] <- groups[is.element(groups$Tower_ID, neighbors), "km10"][1]
+  } else {
+    groups[i, "km10"] <- group
+    group <- group + 1
+  }
+}
+plot(groups$km10)
+  
+groups$km20 <- NA # Make a group where islands are sets of towers within 10km of all others
+group <- 1
+for (i in 1:nrow(groups)){  
+  neighbors <- c()
+  for (j in 2:nrow(groups)){
+    if (towers_dist[i, j] <= 20){
+      if (is.element(towers_dist[j,1], neighbors) == 0){
+        neighbors <- c(neighbors, towers_dist[j,1])
+      }
+    }
+  }
+  if (sum(is.na(groups[is.element(groups$Tower_ID, neighbors), "km20"])==0) > 0 ){
+    groups[i, "km20"] <- groups[is.element(groups$Tower_ID, neighbors), "km20"][1]
+  } else {
+    groups[i, "km20"] <- group
+    group <- group + 1
+  }
+}
+plot(groups$km20)
+hist(groups$km20, breaks = c(1:max(groups$km20)))
+
+groups$km5_conservative <- NA # Make a group where islands are made such that each tower is within 5km of another tower in the gorup
+  
+  add <- 0
+  which_within_5km <- c()
+  iteration = 1
+  add <- towers_dist[which(towers_dist[i,2:ncol(towers_dist)] <= 5), 1]
+  
+  if (length(add) > 0){
+    which_within_5km <- c(which_within_5km, add)
+    add <- towers_dist[which(towers_dist[is.element(towers_dist$X, which_within_5km), 2:ncol(towers_dist)] <= 5), 1]
+    add <- add[is.element(add, which_within_5km)==0]
+  }
+  
+  within_5km <- groups$Tower_ID[]
+  
+}
