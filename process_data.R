@@ -1274,86 +1274,150 @@ write.csv(towers_dist, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/
 towers_dist <- read.csv("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/towers_dist.csv")
 
 #### Make a table with groupings based on distance ####
-towers_dist <- read.csv("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/towers_dist.csv")
-towers_dist[1:5, 1:5]
 
-groups <- data.frame(towers_dist[,1])
-names(groups) <- c("Tower_ID")
+# Note: Just did this in ArcGIS instead #
+# 
+# towers_dist <- read.csv("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/towers_dist.csv")
+# towers_dist[1:5, 1:5]
+# 
+# groups <- data.frame(towers_dist[,1])
+# names(groups) <- c("Tower_ID")
+# 
+# groups$km5 <- NA # Make a group where islands are sets of towers within 5km of all others
+# group <- 1
+# for (i in 1:nrow(groups)){  
+#   neighbors <- c()
+#   for (j in 2:ncol(towers_dist)){
+#     if (towers_dist[i, j] <= 5){
+#       if (is.element(towers_dist[(j-1),1], neighbors) == 0){
+#         neighbors <- c(neighbors, towers_dist[(j-1),1])
+#       }
+#     }
+#   }
+#   if (sum(is.na(groups[is.element(groups$Tower_ID, neighbors), "km5"])==0) > 0 ){ #If at least one of your neighbors has a group listing that is not NA
+#     groups[i, "km5"] <- groups[is.element(groups$Tower_ID, neighbors), "km5"][1]
+#   } else {
+#     groups[i, "km5"] <- group
+#     group <- group + 1
+#   }
+# }
+# plot(groups$km5)
+# 
+# groups$km10 <- NA # Make a group where islands are sets of towers within 10km of all others
+# group <- 1
+# for (i in 1:nrow(groups)){  
+#   neighbors <- c()
+#   for (j in 2:ncol(towers_dist)){
+#     if (towers_dist[i, j] <= 10){
+#       if (is.element(towers_dist[j,1], neighbors) == 0){
+#         neighbors <- c(neighbors, towers_dist[(j-1),1])
+#       }
+#     }
+#   }
+#   if (sum(is.na(groups[is.element(groups$Tower_ID, neighbors), "km10"])==0) > 0 ){
+#     groups[i, "km10"] <- groups[is.element(groups$Tower_ID, neighbors), "km10"][1]
+#   } else {
+#     groups[i, "km10"] <- group
+#     group <- group + 1
+#   }
+# }
+# plot(groups$km10)
+# 
+# groups$km15 <- NA # Make a group where islands are sets of towers within 15km of all others
+# group <- 1
+# for (i in 1:nrow(groups)){  
+#   neighbors <- c()
+#   for (j in 2:ncol(towers_dist)){
+#     if (towers_dist[i, j] <= 15){
+#       if (is.element(towers_dist[j,1], neighbors) == 0){
+#         neighbors <- c(neighbors, towers_dist[(j-1),1])
+#       }
+#     }
+#   }
+#   if (sum(is.na(groups[is.element(groups$Tower_ID, neighbors), "km15"])==0) > 0 ){
+#     groups[i, "km15"] <- groups[is.element(groups$Tower_ID, neighbors), "km15"][1]
+#   } else {
+#     groups[i, "km15"] <- group
+#     group <- group + 1
+#   }
+# }
+# plot(groups$km15)
+# 
+# groups$km20 <- NA # Make a group where islands are sets of towers within 20km of all others
+# group <- 1
+# for (i in 1:nrow(groups)){  
+#   neighbors <- c()
+#   for (j in 2:ncol(towers_dist)){
+#     if (towers_dist[i, j] <= 20){
+#       if (is.element(towers_dist[j,1], neighbors) == 0){
+#         neighbors <- c(neighbors, towers_dist[(j-1),1])
+#       }
+#     }
+#   }
+#   if (sum(is.na(groups[is.element(groups$Tower_ID, neighbors), "km20"])==0) > 0 ){
+#     groups[i, "km20"] <- groups[is.element(groups$Tower_ID, neighbors), "km20"][1]
+#   } else {
+#     groups[i, "km20"] <- group
+#     group <- group + 1
+#   }
+# }
+# plot(groups$km20)
+# 
+# hist(groups$km20, breaks = c(1:max(groups$km20)))
+# 
+# groups$km5_conservative <- NA # Make a group where islands are made such that each tower is within 5km of another tower in the gorup
+#   
+# 
+#   add <- 0
+#   which_within_5km <- c()
+#   iteration = 1
+#   add <- towers_dist[which(towers_dist[i,2:ncol(towers_dist)] <= 5), 1]
+#   
+#   if (length(add) > 0){
+#     which_within_5km <- c(which_within_5km, add)
+#     add <- towers_dist[which(towers_dist[is.element(towers_dist$X, which_within_5km), 2:ncol(towers_dist)] <= 5), 1]
+#     add <- add[is.element(add, which_within_5km)==0]
+#   }
+#   
+#   within_5km <- groups$Tower_ID[]
+#   
+# }
+# 
+# towers_buffer_gis <- read.csv("/Users/peakcm/Documents/SLE_Mobility/Arc GIS/Export_Towers_Buffer.csv")
+# head(towers_buffer_gis)
+# buffer_2.5km_hist <- hist(towers_buffer_gis$buffer_2500m, xlab = "Group Number", ylab = "Number of Towers", breaks = seq(1, max(towers_buffer_gis$buffer_2500m)))
+# sum(buffer_2.5km_hist$counts <= 3 ) #93 singlets
+# 
+# buffer_5km_hist <- hist(towers_buffer_gis$buffer_5km, xlab = "Group Number", ylab = "Number of Towers", breaks = seq(1, max(towers_buffer_gis$buffer_5km)))
+# sum(buffer_5km_hist$counts <= 3 ) #64 singlets
+# 
+# buffer_10km_hist <- hist(towers_buffer_gis$buffer_10km, xlab = "Group Number", ylab = "Number of Towers", breaks = seq(1, max(towers_buffer_gis$buffer_10km)))
+# sum(buffer_10km_hist$counts <= 3 ) #14 singlets
 
-groups$km5 <- NA # Make a group where islands are sets of towers within 5km of all others
-group <- 1
-for (i in 1:nrow(groups)){  
-  neighbors <- c()
-  for (j in 2:nrow(groups)){
-    if (towers_dist[i, j] <= 5){
-      if (is.element(towers_dist[j,1], neighbors) == 0){
-        neighbors <- c(neighbors, towers_dist[j,1])
-      }
-    }
-  }
-  if (sum(is.na(groups[is.element(groups$Tower_ID, neighbors), "km5"])==0) > 0 ){
-    groups[i, "km5"] <- groups[is.element(groups$Tower_ID, neighbors), "km5"][1]
-  } else {
-    groups[i, "km5"] <- group
-    group <- group + 1
-  }
-}
-plot(groups$km5)
+#### Explore 2014 Data ####
+setwd("/Users/peakcm/Documents/SLE_Mobility/data")
+data_2014 <- read.csv(file = "AllMvtBtwnMUC2014WDate.csv")
+data_2014 <- data_2014[order(data_2014$fromLoc),] 
+# dayofyear=159 is the mode. That's July 10. 1772 fromLoc's have records on this day
 
-groups$km10 <- NA # Make a group where islands are sets of towers within 10km of all others
-group <- 1
-for (i in 1:nrow(groups)){  
-  neighbors <- c()
-  for (j in 2:nrow(groups)){
-    if (towers_dist[i, j] <= 10){
-      if (is.element(towers_dist[j,1], neighbors) == 0){
-        neighbors <- c(neighbors, towers_dist[j,1])
-      }
-    }
-  }
-  if (sum(is.na(groups[is.element(groups$Tower_ID, neighbors), "km10"])==0) > 0 ){
-    groups[i, "km10"] <- groups[is.element(groups$Tower_ID, neighbors), "km10"][1]
-  } else {
-    groups[i, "km10"] <- group
-    group <- group + 1
-  }
-}
-plot(groups$km10)
-  
-groups$km20 <- NA # Make a group where islands are sets of towers within 10km of all others
-group <- 1
-for (i in 1:nrow(groups)){  
-  neighbors <- c()
-  for (j in 2:nrow(groups)){
-    if (towers_dist[i, j] <= 20){
-      if (is.element(towers_dist[j,1], neighbors) == 0){
-        neighbors <- c(neighbors, towers_dist[j,1])
-      }
-    }
-  }
-  if (sum(is.na(groups[is.element(groups$Tower_ID, neighbors), "km20"])==0) > 0 ){
-    groups[i, "km20"] <- groups[is.element(groups$Tower_ID, neighbors), "km20"][1]
-  } else {
-    groups[i, "km20"] <- group
-    group <- group + 1
-  }
-}
-plot(groups$km20)
-hist(groups$km20, breaks = c(1:max(groups$km20)))
+length(unique(data_2014$fromLoc))
+length(unique(towers$CellID))
 
-groups$km5_conservative <- NA # Make a group where islands are made such that each tower is within 5km of another tower in the gorup
-  
-  add <- 0
-  which_within_5km <- c()
-  iteration = 1
-  add <- towers_dist[which(towers_dist[i,2:ncol(towers_dist)] <= 5), 1]
-  
-  if (length(add) > 0){
-    which_within_5km <- c(which_within_5km, add)
-    add <- towers_dist[which(towers_dist[is.element(towers_dist$X, which_within_5km), 2:ncol(towers_dist)] <= 5), 1]
-    add <- add[is.element(add, which_within_5km)==0]
-  }
-  
-  within_5km <- groups$Tower_ID[]
-  
-}
+data_2014.unique <- data.frame(matrix(nrow = length(unique(data_2014$fromLoc)), ncol = 1))
+names(data_2014.unique) <- c("fromLoc")
+data_2014.unique$fromLoc <- unique(data_2014$fromLoc)
+data_2014.unique$index <- seq(1, nrow(data_2014.unique))
+data_2014.unique$known <- NA
+data_2014.unique$known[is.element(data_2014.unique$fromLoc, towers$CellID)==1] <- 1
+data_2014.unique$known[is.element(data_2014.unique$fromLoc, towers$CellID)==0] <- 0
+
+ggplot(data = data_2014.unique, aes(x = index, y=fromLoc, col = as.factor(known))) +
+  geom_point() + 
+  scale_color_manual(values=c("red", "black"), 
+                     name="Tower known?",
+                     breaks=c("0", "1"),
+                     labels=c("No", "Yes")) +
+  theme_bw() +
+  ylab("Tower ID Number") +
+  ggtitle("Index of towers in 2014 data")
+
