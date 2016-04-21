@@ -17,6 +17,7 @@ library(geosphere)
 library(RColorBrewer)
 library(reshape2)
 library(RCurl)
+library(TSA)
 # library(plotly)
 
 #### Tasks ####
@@ -164,6 +165,37 @@ for (i in 1:nrow(travel.times)){
 # Import population data
 setwd("/Users/peakcm/Documents/2014 Cholera OCV/Data - Raw/Population")
 data_chief_pop <- read.csv(file = "SL_Chiefdom_Codes_Pop.csv")
+
+# Open 2014 dataset
+setwd("/Users/peakcm/Documents/SLE_Mobility/data")
+data_2014 <- read.csv(file = "AllMvtBtwnMUC2014WDate.csv")
+
+date.start.2014 <- as.numeric(as.Date(c("05/29/2014"), format = "%m/%d/%Y"))
+date.start.2014.shift <- date.start.2014 - data_2014$dayofyear[1]
+data_2014$dayofyear <- data_2014$dayofyear +  date.start.2014.shift
+data_2014$day <- as.Date(data_2014$dayofyear, origin = "1970-01-01")
+
+#### Troubleshoot towers ####
+tower_table <- data.frame(table(towers$CellID))
+tower_table[tower_table$Freq>1,]
+repeats <- as.character(tower_table[tower_table$Freq>1,"Var1"])
+# Towers where the repeat numbers are in roughly the same chiefdom: 11, 12, 13, 31, 32, 33, 151, 152, 153, 397, 3661, 3662, 3663, 3678
+# Towers where the repeat numbers are in different places
+  # 181. WA Urban, WA Rural
+  # 221, 222, 223 Eastern Koidu Town, WA Urban
+  # 281, 282, 283 Eastern Kenema, WA Rural
+  # 311, 312, 313 Southern Bo Town, WA Urban
+  # 391, 392, 393 Southern Moyamba, WA Urban
+  # 481, 482, 483 Southern Moyamba, WA Urban
+  # 791, 792, 793 Southern Bo, WA Urban
+  # 1401, 1402, 1403 Northern Koinadugu, WA Rural
+  # 1661, 1662, 1663 Northern Port Loko, WA Urban
+  # 1941, 1942, 1943 WA Urban, WA Rural
+
+# Other problematic towers from analysis:
+  # 1, 2, 3, 399 are mising in the geocoded table
+    # 399 is probably supposed to be with 397 and 398 as per the pattern.
+  # 3651, 3652, 3653 are currently located in WA, but int he data they seem to be used by people in Southern Bo Town. So might want to move them there.
 
 #### Tonkolili Plots ####
 # Focus on Kholifa Rowala Chiefdom (2505) in Tonkolili District
@@ -959,10 +991,15 @@ data_admin3.daily <- data.frame(matrix(rep(NA, 2*(ncol(data_admin3)-3)), ncol=2)
 names(data_admin3.daily) <- c("day", "cum_trips")
 data_admin3.daily$day <- names(data_admin3)[3:(ncol(data_admin3)-1)]
 
+data_admin3.daily$weekday <- NA
+
+data_admin3.daily <- data_admin3.daily[1:(nrow(data_admin3.daily)-3),]
+
 for (row in 1:nrow(data_admin3.daily)){
   data_admin3.daily[row, "cum_trips"] <- sum(data_admin3.melt[data_admin3.melt$variable == data_admin3.daily[row, "day"],"value"])
 }
-data_admin3.daily$weekday <- factor(c(rep(c("Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"), times = floor(nrow(data_admin3.daily)/7)), c("Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday")),levels = c("Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"))
+days <- rep(c("Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"), times = ceiling(nrow(data_admin3.daily)/7))
+data_admin3.daily$weekday <- factor(days[1:nrow(data_admin3.daily)],levels = c("Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"))
 tail(data_admin3.daily)
 
 ggplot(data = data_admin3.daily) +
@@ -998,6 +1035,8 @@ ggplot(data = data_admin3.daily) +
 data_admin3.daily.Freetown <- data.frame(matrix(rep(NA, 2*(ncol(data_admin3)-3)), ncol=2))
 names(data_admin3.daily.Freetown) <- c("day", "cum_trips")
 data_admin3.daily.Freetown$day <- names(data_admin3)[3:(ncol(data_admin3)-1)]
+
+data_admin3.daily.Freetown <- data_admin3.daily.Freetown[1:(nrow(data_admin3.daily.Freetown)-3),]
 
 for (row in 1:nrow(data_admin3.daily.Freetown)){
   data_admin3.daily.Freetown[row, "cum_trips"] <- sum(data_admin3.melt[data_admin3.melt$Chief_From > 4000 & 
@@ -1036,11 +1075,12 @@ ggplot(data = data_admin3.daily.Freetown) +
                                 "06/01/2015", "06/15/2015", "07/01/2015", "07/15/2015"))
   
 
-
 # Focus on everything but Freetown
 data_admin3.daily.NotFreetown <- data.frame(matrix(rep(NA, 2*(ncol(data_admin3)-3)), ncol=2))
 names(data_admin3.daily.NotFreetown) <- c("day", "cum_trips")
 data_admin3.daily.NotFreetown$day <- names(data_admin3)[3:(ncol(data_admin3)-1)]
+
+data_admin3.daily.NotFreetown <- data_admin3.daily.NotFreetown[1:(nrow(data_admin3.daily.NotFreetown)-3),]
 
 for (row in 1:nrow(data_admin3.daily.NotFreetown)){
   data_admin3.daily.NotFreetown[row, "cum_trips"] <- sum(data_admin3.melt[data_admin3.melt$Chief_From < 4000 & 
@@ -1077,6 +1117,114 @@ ggplot(data = data_admin3.daily.NotFreetown) +
                                 as.numeric(as.Date(c("07/15/2015"), format = "%m/%d/%Y"))),
                      labels = c("04/01/2015", "04/15/2015", "05/01/2015", "05/15/2015",
                                 "06/01/2015", "06/15/2015", "07/01/2015", "07/15/2015"))
+
+#### Try time series functions ####
+library(TTR)
+data_admin3.daily <- data_admin3.daily[1:(nrow(data_admin3.daily)-2),] #drop last two
+data_admin3.daily.ts <- ts(data_admin3.daily$cum_trips)
+plot.ts(data_admin3.daily.ts)
+
+#simple moving average of 2 days
+data_admin3.daily.ts.SMA2 <- SMA(data_admin3.daily.ts, n=2)
+plot.ts(data_admin3.daily.ts.SMA2)
+
+# ARIMA, difference the time series to get stationarity. maybe already stationary? Or diff1?
+data_admin3.daily.ts.diff1 <- diff(data_admin3.daily.ts, differences = 1)
+plot.ts(data_admin3.daily.ts.diff1)
+data_admin3.daily.ts.diff2 <- diff(data_admin3.daily.ts, differences = 2)
+plot.ts(data_admin3.daily.ts.diff2)
+
+# ARIMA, plot correlograms to get values of autocorrelation
+acf(data_admin3.daily.ts, lag.max = 28)  
+acf(data_admin3.daily.ts, lag.max = 28, plot=FALSE)
+acf(data_admin3.daily.ts.diff1, lag.max = 28) 
+acf(data_admin3.daily.ts.diff1, lag.max = 28, plot=FALSE)
+acf(data_admin3.daily.ts.diff2, lag.max = 28) 
+acf(data_admin3.daily.ts.diff2, lag.max = 28, plot=FALSE)
+
+# auto ARIMA
+library(forecast)
+auto.arima(data_admin3.daily.ts) #suggests an ARIMA(0,0,2)
+
+# ARIMA
+data_admin3.daily.ts.arima <- arima(data_admin3.daily.ts, order=c(0,0,2))
+data_admin3.daily.ts.arima #AIC 2121.29
+acf(data_admin3.daily.ts.arima$residuals)
+pacf(data_admin3.daily.ts.arima$residuals)
+Box.test(data_admin3.daily.ts.arima$residuals)
+
+# ARIMAX intervention analysis
+data_admin3.daily$NSAHD <- c(rep(0, 7), rep(1, 3), rep(0, nrow(data_admin3.daily)-10))
+data_admin3.daily.cum_trips.ts <- ts(data_admin3.daily$cum_trips)
+data_admin3.daily.NSAHD.ts <- ts(data_admin3.daily$NSAHD)
+
+data_admin3.daily.ts.arimax <- arimax(data_admin3.daily.cum_trips.ts, order = c(0,0,2), xreg = data_admin3.daily.NSAHD.ts)
+data_admin3.daily.ts.arimax #AIC 2079.31, which is way lower than if we exclude exogenous intervention
+acf(data_admin3.daily.ts.arimax$residuals)
+pacf(data_admin3.daily.ts.arimax$residuals)
+Box.test(data_admin3.daily.ts.arimax$residuals)
+
+# Create a dataset with the cumulative trips on each day from each chiefdom
+data_admin3.daily_CHfrom <- data.frame(matrix(nrow = length(dates), ncol = length(unique(data_admin3.melt$Chief_From))))
+row.names(data_admin3.daily_CHfrom) <- dates
+names(data_admin3.daily_CHfrom) <- unique(data_admin3.melt$Chief_From)
+
+for (i in 1:nrow(data_admin3.daily_CHfrom)){
+  day <- dates[i]
+  for (j in 1:ncol(data_admin3.daily_CHfrom)){
+    CHCODE <- names(data_admin3.daily_CHfrom)[j]
+    data_admin3.daily_CHfrom[i,j] <- sum(data_admin3.melt[data_admin3.melt$Chief_From == CHCODE & data_admin3.melt$variable == day,"value"])
+  }
+  cat(".")
+}
+
+data_admin3.daily_CHfrom.ts10 <- ts(data_admin3.daily_CHfrom[,1:10])
+data_admin3.daily_CHfrom.ts20 <- ts(data_admin3.daily_CHfrom[,11:20])
+data_admin3.daily_CHfrom.ts30 <- ts(data_admin3.daily_CHfrom[,21:30])
+data_admin3.daily_CHfrom.ts40 <- ts(data_admin3.daily_CHfrom[,31:40])
+data_admin3.daily_CHfrom.ts50 <- ts(data_admin3.daily_CHfrom[,41:50])
+data_admin3.daily_CHfrom.ts60 <- ts(data_admin3.daily_CHfrom[,51:60])
+data_admin3.daily_CHfrom.ts70 <- ts(data_admin3.daily_CHfrom[,61:70])
+data_admin3.daily_CHfrom.ts80 <- ts(data_admin3.daily_CHfrom[,71:80])
+plot.ts(data_admin3.daily_CHfrom.ts10)
+plot.ts(data_admin3.daily_CHfrom.ts20)
+plot.ts(data_admin3.daily_CHfrom.ts30)
+plot.ts(data_admin3.daily_CHfrom.ts40)
+plot.ts(data_admin3.daily_CHfrom.ts50)
+plot.ts(data_admin3.daily_CHfrom.ts60)
+plot.ts(data_admin3.daily_CHfrom.ts70)
+plot.ts(data_admin3.daily_CHfrom.ts80)
+
+# Create a dataset with the cumulative trips on each day TO each chiefdom
+data_admin3.daily_CHto <- data.frame(matrix(nrow = length(dates), ncol = length(unique(data_admin3.melt$Chief_From))))
+row.names(data_admin3.daily_CHto) <- dates
+names(data_admin3.daily_CHto) <- unique(data_admin3.melt$Chief_To)
+
+for (i in 1:nrow(data_admin3.daily_CHto)){
+  day <- dates[i]
+  for (j in 1:ncol(data_admin3.daily_CHto)){
+    CHCODE <- names(data_admin3.daily_CHto)[j]
+    data_admin3.daily_CHto[i,j] <- sum(data_admin3.melt[data_admin3.melt$Chief_To == CHCODE & data_admin3.melt$variable == day,"value"])
+  }
+  cat(".")
+}
+
+data_admin3.daily_CHto.ts10 <- ts(data_admin3.daily_CHto[,1:10])
+data_admin3.daily_CHto.ts20 <- ts(data_admin3.daily_CHto[,11:20])
+data_admin3.daily_CHto.ts30 <- ts(data_admin3.daily_CHto[,21:30])
+data_admin3.daily_CHto.ts40 <- ts(data_admin3.daily_CHto[,31:40])
+data_admin3.daily_CHto.ts50 <- ts(data_admin3.daily_CHto[,41:50])
+data_admin3.daily_CHto.ts60 <- ts(data_admin3.daily_CHto[,51:60])
+data_admin3.daily_CHto.ts70 <- ts(data_admin3.daily_CHto[,61:70])
+data_admin3.daily_CHto.ts80 <- ts(data_admin3.daily_CHto[,71:80])
+plot.ts(data_admin3.daily_CHto.ts10)
+plot.ts(data_admin3.daily_CHto.ts20)
+plot.ts(data_admin3.daily_CHto.ts30)
+plot.ts(data_admin3.daily_CHto.ts40)
+plot.ts(data_admin3.daily_CHto.ts50)
+plot.ts(data_admin3.daily_CHto.ts60)
+plot.ts(data_admin3.daily_CHto.ts70)
+plot.ts(data_admin3.daily_CHto.ts80)
 
 #### Map spatial heterogeneity of national movement restriction intervention ####
 # Make a sequence of plots with each chiefdom shaded by the number of trips from that chiefdom by day
@@ -1257,20 +1405,49 @@ earth.dist <- function (long1, lat1, long2, lat2)
 }
 earth.dist(towers[1,"Long"], towers[1,"Lat"], towers[20,"Long"], towers[20, "Lat"])
 
-towers_dist <- data.frame(matrix(rep(NA, length(unique(towers$CellID))^2), nrow=length(unique(towers$CellID))))
-row.names(towers_dist) <- unique(towers$CellID)
-names(towers_dist) <- unique(towers$CellID)
+towers_dist <- data.frame(matrix(rep(NA, length(towers$CellID)^2), nrow=length(towers$CellID)))
+names <- as.character(towers$CellID)
+
+# Account for towers with repeat appearances
+seen_once <- c()
+seen_twice <- c()
+for (i in 1:length(names)){
+  if (names[i] %in% repeats){   #note, need to make "repeats" first. see above
+    if (names[i] %in% seen_once){
+      if (names[i] %in% seen_twice){
+        names[i] <- paste(names[i],"c", sep="")
+      } else {
+        seen_twice <- c(seen_twice, names[i])
+        names[i] <- paste(names[i],"b", sep="")
+      }
+    } else {
+      seen_once <- c(seen_once, names[i])
+      names[i] <- paste(names[i],"a",sep="")
+    }
+  }
+}
+names[names != towers$CellID]
+row.names(towers_dist) <- names
+names(towers_dist) <- names
+towers$CellID_corrected <- names
 
 for (i in 1:nrow(towers_dist)){
   for (j in 1:ncol(towers_dist)){
-    long1 <- towers[towers$CellID == row.names(towers_dist)[i], "Long"][1]
-    lat1  <- towers[towers$CellID == row.names(towers_dist)[i], "Lat"][1]
-    long2 <- towers[towers$CellID == row.names(towers_dist)[j], "Long"][1]
-    lat2  <- towers[towers$CellID == row.names(towers_dist)[j], "Lat"][1]
+    long1 <- towers[towers$CellID_corrected == row.names(towers_dist)[i], "Long"][1]
+    lat1  <- towers[towers$CellID_corrected == row.names(towers_dist)[i], "Lat"][1]
+    long2 <- towers[towers$CellID_corrected == row.names(towers_dist)[j], "Long"][1]
+    lat2  <- towers[towers$CellID_corrected == row.names(towers_dist)[j], "Lat"][1]
     towers_dist[i,j] <- earth.dist(long1, lat1, long2, lat2)
   }
 }
-write.csv(towers_dist, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/towers_dist.csv", )
+head(towers_dist)
+
+# Add tower 399 that is equivalent to 398
+towers_dist[c("398"),c("397b")]
+towers_dist <- cbind(towers_dist, "399" = towers_dist[,"398"])
+towers_dist <- rbind(towers_dist, "399" = towers_dist["398",])
+
+write.csv(towers_dist, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/towers_dist.csv")
 towers_dist <- read.csv("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/towers_dist.csv")
 
 #### Make a table with groupings based on distance ####
@@ -1395,10 +1572,7 @@ towers_dist <- read.csv("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/towers
 # sum(buffer_10km_hist$counts <= 3 ) #14 singlets
 
 #### Explore 2014 Data ####
-setwd("/Users/peakcm/Documents/SLE_Mobility/data")
-data_2014 <- read.csv(file = "AllMvtBtwnMUC2014WDate.csv")
 data_2014 <- data_2014[order(data_2014$fromLoc),] 
-# dayofyear=159 is the mode. That's July 10. 1772 fromLoc's have records on this day
 
 length(unique(data_2014$fromLoc))
 length(unique(towers$CellID))
@@ -1411,13 +1585,88 @@ data_2014.unique$known <- NA
 data_2014.unique$known[is.element(data_2014.unique$fromLoc, towers$CellID)==1] <- 1
 data_2014.unique$known[is.element(data_2014.unique$fromLoc, towers$CellID)==0] <- 0
 
-ggplot(data = data_2014.unique, aes(x = index, y=fromLoc, col = as.factor(known))) +
-  geom_point() + 
+ggplot(data = data_2014.unique, aes(x = index, y=fromLoc, col = as.factor(known), shape = as.factor(known))) +
+  geom_point(size = 3, alpha = 0.8) + 
   scale_color_manual(values=c("red", "black"), 
                      name="Tower known?",
                      breaks=c("0", "1"),
                      labels=c("No", "Yes")) +
+  scale_shape_manual(values = c("|", "o"),
+                     name="Tower known?",
+                     breaks=c("0","1"),
+                     labels = c("No", "Yes")) +
   theme_bw() +
   ylab("Tower ID Number") +
   ggtitle("Index of towers in 2014 data")
+
+ggplot(data = data_2014.unique, aes(x = fromLoc, y = jitter(known))) +
+  geom_point(alpha = 0.5) +
+  scale_y_continuous(name = "Location of tower is ...",
+                     breaks = c(0,1),
+                     labels = c("Unknown", "Known")) +
+  xlab("Tower ID number") +
+  ggtitle("The location of many towers in the 2014 dataset is unknown") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
+  
+# number of trips per day
+# Melt data_2014 call data
+data_2014.melt <- melt(data_2014, id = c("fromLoc", "toLoc"), measure.vars = c("day", "count"))
+
+# Create a dataset with the cumulative trips on each day
+
+data_2014.daily <- data.frame(matrix(nrow = length(unique(data_2014$day)), ncol = 2))
+names(data_2014.daily) <- c("day", "cum_trips")
+data_2014.daily$day <- unique(data_2014$day)
+
+for (row in 1:nrow(data_2014.daily)){
+  day <- data_2014.daily$day[row]
+  data_2014.daily$cum_trips[row] <- sum(data_2014[data_2014$day == day, "count"])
+}
+data_2014.daily <- data_2014.daily[order(data_2014.daily$day),] 
+
+ggplot(data = data_2014.daily) +
+  # "three days stay at home" Sept 19-21 nationally
+  annotate("rect", xmin = as.numeric(as.Date(c("09/19/2014"), format = "%m/%d/%Y")) - 0.5,
+           xmax = as.numeric(as.Date(c("09/21/2014"), format = "%m/%d/%Y")) + 0.5,
+           ymin = 0, ymax = max(data_2014.daily$cum_trips), alpha = .2) +
+  geom_point(aes(x=as.numeric(day), y=cum_trips), size=3) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  xlab("Day") + ylab("Cumulative Trips") + ggtitle("Daily Trips") +
+  scale_x_continuous(breaks = c(as.numeric(as.Date(c("05/01/2014"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("06/01/2014"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("07/01/2014"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("08/01/2014"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("09/01/2014"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("10/01/2014"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("11/01/2014"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("12/01/2014"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("1/01/2015"), format = "%m/%d/%Y")),
+                                as.numeric(as.Date(c("2/01/2015"), format = "%m/%d/%Y"))),
+                     labels = c("05/01/2014",
+                                "06/01/2014",
+                                "07/01/2014",
+                                "08/01/2014",
+                                "09/01/2014",
+                                "10/01/2014",
+                                "11/01/2014",
+                                "12/01/2014",
+                                "01/01/2015",
+                                "02/01/2015"))
+
+# Show span of missing dates
+date.span.2014 <- data.frame(day = seq(from = min(data_2014$dayofyear), to = max(data_2014$dayofyear)), missing = NA)
+for (row in 1:nrow(date.span.2014)){
+  day <- date.span.2014$day[row]
+  date.span.2014$missing[row] <- as.numeric(is.element(day, data_2014$dayofyear))
+}
+
+
+ggplot(data = date.span.2014, aes(x = as.Date(day, origin = "1970-01-01"), y = jitter(missing))) +
+  geom_point(alpha = 0.5) +
+  scale_y_continuous(name = "Status of data on this date",
+                     breaks = c(0,1),
+                     labels = c("Missing", "Not Missing")) +
+  xlab("Date") +
+  ggtitle("Data on many dates in the 2014 dataset are unknown") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
 
