@@ -1,19 +1,40 @@
 # Analyze transition matrix pulled from Ericsson server
 
+#### Load Libraries ####
 library(ggplot2)
 library(reshape2)
 library(plyr)
-library(lme4)
 library(TTR)
 library(forecast)
+library(nlme)      # Estimation of mixed effects models
+library(lme4)      # Alternative package for mixed effects models
+library(plm)       # Econometrics package for linear panel models
+library(arm)       # Gelman & Hill code for mixed effects simulation
+library(pcse)      # Calculate PCSEs for LS models (Beck & Katz)
+library(tseries)   # For ADF unit root test
+library(simcf)     # For panel functions and simulators
+library(tile)           # For visualization of model inference
+library(RColorBrewer)   # For nice colors
+library(MASS)           # For mvrnorm()
+source("/Users/peakcm/Desktop/Panel Data/Topic 7/helperCigs.R")  # For graphics functions
 
 #### Save/Load Workspace ####
-save.image("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/20160419_workspace_analyze_transition_matrix.RData")
+# save.image("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/20160419_workspace_analyze_transition_matrix.RData")
 load("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/20160419_workspace_analyze_transition_matrix.RData")
+
+# save.image("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/20160419_workspace_analyze_transition_matrix_2day.RData")
+# load("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/20160419_workspace_analyze_transition_matrix_2day.RData")
+
+# save.image("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/20160419_workspace_analyze_transition_matrix_3day.RData")
+# load("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/20160419_workspace_analyze_transition_matrix_3day.RData")
 
 #### Load Data ####
 # Load transition matrix
-data_1day <- read.table("/Users/peakcm/Documents/SLE_Mobility/transition_matrix_collated_1day.csv", header = TRUE, sep = "\t", colClasses = c("character",rep("numeric", times = 103)))
+# data_1day <- read.table("/Users/peakcm/Documents/SLE_Mobility/transition_matrix_collated_1day.csv", header = TRUE, sep = "\t", colClasses = c("character",rep("numeric", times = 103)))
+
+# data_1day <- read.table("/Users/peakcm/Documents/SLE_Mobility/transition_matrix_collated_2day.csv", header = TRUE, sep = "\t", colClasses = c("character",rep("numeric", times = 103)))
+
+# data_1day <- read.table("/Users/peakcm/Documents/SLE_Mobility/transition_matrix_collated_3day.csv", header = TRUE, sep = "\t", colClasses = c("character",rep("numeric", times = 103)))
 
 setwd("/Users/peakcm/Dropbox/Ebola/Spatial Analysis SL PNAS/")
 data_pop_PNAS <- read.csv(file = "PNAS_Population.csv")
@@ -186,8 +207,8 @@ names(data_1day_melt_chiefdom)[c(4,5)] <- c("variable", "count")
 names(data_1day_chiefdom)[length(names(data_1day_chiefdom))] <- "trips"
 head(data_1day_chiefdom)
 hist(log(data_1day_chiefdom$trips))
-hist(log(data_1day_chiefdom[data_1day_chiefdom$admin3_current == 4205,]$trips))
-ggplot(data = data_1day_chiefdom[data_1day_chiefdom$admin3_previous == 4208,], aes(x = date, y = log10(trips), group = admin3_current, color = admin3_current)) + geom_line()
+hist(log(data_1day_chiefdom[data_1day_chiefdom$admin3_current == 4299,]$trips))
+ggplot(data = data_1day_chiefdom[data_1day_chiefdom$admin3_previous == 4299,], aes(x = date, y = log10(trips), group = admin3_current, color = admin3_current)) + geom_line()
 data_1day_chiefdom[data_1day_chiefdom$admin3_current == 1102 & data_1day_chiefdom$admin3_previous == 1102 & data_1day_chiefdom$date == "2015-03-27",]
 
 data_1day_melt_chiefdom$day_of_week <- as.factor(as.POSIXlt(data_1day_melt_chiefdom$date)$wday)
@@ -244,17 +265,15 @@ head(data_1day_chiefdom_na.rm[data_1day_chiefdom_na.rm$admin3_current == 1102 & 
 
 #### Save/Load dataset ####
 # write.csv(data_1day_melt_chiefdom_na.rm, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_1day_melt_chiefdom_na.rm.csv")
-data_1day_melt_chiefdom_na.rm <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_1day_melt_chiefdom_na.rm.csv")
+# data_1day_melt_chiefdom_na.rm <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_1day_melt_chiefdom_na.rm.csv")
+
+# write.csv(data_1day_melt_chiefdom_na.rm, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_2day_melt_chiefdom_na.rm.csv")
+# data_1day_melt_chiefdom_na.rm <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_2day_melt_chiefdom_na.rm.csv")
+
+write.csv(data_1day_melt_chiefdom_na.rm, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_3day_melt_chiefdom_na.rm.csv")
+data_1day_melt_chiefdom_na.rm <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_3day_melt_chiefdom_na.rm.csv")
 
 #### Borrow from Christopher Adolph's method. Topic 7. "panelGMMtemplate.r ####
-library(plm)            # Econometrics package for linear panel models
-library(tseries)        # For ADF unit root test
-library(simcf)          # For panel functions and simulators
-library(tile)           # For visualization of model inference
-library(RColorBrewer)   # For nice colors
-library(MASS)           # For mvrnorm()
-source("/Users/peakcm/Desktop/Panel Data/Topic 7/helperCigs.R")  # For graphics functions
-
 CHList <- unique(as.character(data_1day_chiefdom_na.rm$admin3_current))
 nCH <- length(CHList)
 dateList <- unique(data_1day_melt$date)
@@ -284,13 +303,6 @@ pdata <- pdata.frame(data_1day_melt_chiefdom, index=c("pair", "date"))
 pgmmformula.1a <- count ~ nsahd
 
 #### Borrow from Christopher Adolph's method. Topic 6. "panelARIMAtemplate.r ####
-library(nlme)      # Estimation of mixed effects models
-library(lme4)      # Alternative package for mixed effects models
-library(plm)       # Econometrics package for linear panel models
-library(arm)       # Gelman & Hill code for mixed effects simulation
-library(pcse)      # Calculate PCSEs for LS models (Beck & Katz)
-library(tseries)   # For ADF unit root test
-library(simcf)     # For panel functions and simulators
 
 df_ARIMA <- data_1day_melt_chiefdom_na.rm
 
@@ -396,8 +408,11 @@ df_ARIMA_select$admin3_previous_weekly_incidence <- NA
 
 for (chief_current in unique(df_ARIMA_select$admin3_current)){
   for (chief_previous in unique(df_ARIMA_select$admin3_previous)){
-    df_ARIMA_select[df_ARIMA_select$admin3_current == chief_current & df_ARIMA_select$admin3_previous == chief_previous, c("admin3_current_daily_incidence", "admin3_current_cum_incidence", "admin3_current_weekly_incidence")] <- data_ebola_chiefdom_daily_melt[data_ebola_chiefdom_daily_melt$CHCODE == chief_current & data_ebola_chiefdom_daily_melt$date %in% seq(4, 103),c("daily_cases", "cum_cases", "weekly_cases_rolling")]
-    df_ARIMA_select[df_ARIMA_select$admin3_current == chief_current & df_ARIMA_select$admin3_previous == chief_previous,  c("admin3_previous_daily_incidence", "admin3_previous_cum_incidence", "admin3_previous_weekly_incidence")] <- data_ebola_chiefdom_daily_melt[data_ebola_chiefdom_daily_melt$CHCODE == chief_previous & data_ebola_chiefdom_daily_melt$date %in% seq(4, 103),c("daily_cases", "cum_cases", "weekly_cases_rolling")]
+    if (nrow(df_ARIMA_select[df_ARIMA_select$admin3_current == chief_current & df_ARIMA_select$admin3_previous == chief_previous,]) > 0){
+      if (nrow(df_ARIMA_select[df_ARIMA_select$admin3_current == chief_current & df_ARIMA_select$admin3_previous == chief_previous,]) != nrow(data_ebola_chiefdom_daily_melt[data_ebola_chiefdom_daily_melt$CHCODE == chief_current & data_ebola_chiefdom_daily_melt$date %in% seq(4, 103),c("daily_cases", "cum_cases", "weekly_cases_rolling")])){cat("\nError 1. chief_current = ", chief_current, "and chief_previous = ", chief_previous)}
+      df_ARIMA_select[df_ARIMA_select$admin3_current == chief_current & df_ARIMA_select$admin3_previous == chief_previous, c("admin3_current_daily_incidence", "admin3_current_cum_incidence", "admin3_current_weekly_incidence")] <- data_ebola_chiefdom_daily_melt[data_ebola_chiefdom_daily_melt$CHCODE == chief_current & data_ebola_chiefdom_daily_melt$date %in% seq(4, 103),c("daily_cases", "cum_cases", "weekly_cases_rolling")]
+      df_ARIMA_select[df_ARIMA_select$admin3_current == chief_current & df_ARIMA_select$admin3_previous == chief_previous,  c("admin3_previous_daily_incidence", "admin3_previous_cum_incidence", "admin3_previous_weekly_incidence")] <- data_ebola_chiefdom_daily_melt[data_ebola_chiefdom_daily_melt$CHCODE == chief_previous & data_ebola_chiefdom_daily_melt$date %in% seq(4, 103),c("daily_cases", "cum_cases", "weekly_cases_rolling")]
+    }
   }
   cat(".")
 }
@@ -428,6 +443,13 @@ df_ARIMA_select$operation_northern_push_current <- 0
 df_ARIMA_select[df_ARIMA_select$admin3_current %in% north_push_chiefdoms & df_ARIMA_select$date > north_push_start, "operation_northern_push_current"] <- 1
 df_ARIMA_select[df_ARIMA_select$admin3_previous %in% north_push_chiefdoms & df_ARIMA_select$date > north_push_start, "operation_northern_push_previous"] <- 1
 
+  # Create a control variable for Operation Northern Push. started June 16 for at least 21 days. chiefdom quarantines in Kambia (22) and Port Loko (24). Include all other districts.
+df_ARIMA_select$operation_northern_push_previous_control <- 0
+df_ARIMA_select$operation_northern_push_current_control <- 0
+
+df_ARIMA_select[(df_ARIMA_select$admin3_current %in% north_push_chiefdoms)==0 & df_ARIMA_select$date > north_push_start, "operation_northern_push_current_control"] <- 1
+df_ARIMA_select[(df_ARIMA_select$admin3_current %in% north_push_chiefdoms)==0 & df_ARIMA_select$date > north_push_start, "operation_northern_push_previous_control"] <- 1
+
 # Add population data
 setwd("/Users/peakcm/Dropbox/Ebola/Spatial Analysis SL PNAS/")
 data_pop_PNAS <- read.csv(file = "PNAS_Population.csv")
@@ -444,13 +466,17 @@ for (chief in unique(df_ARIMA_select$admin3_current)){
 df_ARIMA_select$admin3_total_cum_incidence_per_100000pop <- NA
 df_ARIMA_select$admin3_total_cum_incidence_per_100000pop <- 100000 * df_ARIMA_select$admin3_total_cum_incidence / (df_ARIMA_select$population_current + df_ARIMA_select$population_previous)
 
-# Save combined data
-write.csv(df_ARIMA_select, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select.csv") #note that currently, this is the min1000 file
+#### Save combined data ####
+# write.csv(df_ARIMA_select, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select.csv") #note that currently, this is the min1000 file
+# write.csv(df_ARIMA_select, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select_2day.csv") #note that currently, this is the min1000 file
+write.csv(df_ARIMA_select, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select_3day.csv") #note that currently, this is the min1000 file
 
-# Load combined data
-df_ARIMA_select <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select.csv")
+##### Load combined data ####
+# df_ARIMA_select <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select.csv")
+# df_ARIMA_select <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select_2day.csv")
+df_ARIMA_select <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select_3day.csv")
 
-# Restrict the data to only those pairs with at least 10 trips per day
+#### Restrict the data to only those pairs with at least 10 trips per day ####
 df_ARIMA_select <- df_ARIMA_select[df_ARIMA_select$pair_code %in% pair_codebook[pair_codebook$pair %in% pairs_cumtrips_min1000,"pair_code"],]
 nrow(df_ARIMA_select)
 
@@ -626,8 +652,8 @@ sort(tapply(ARIMA_output$AIC, ARIMA_output$pdq, mean)) #2,0,2 seems to be min. 1
 #### Random Effects Model ####
 # See "Lab_5.R
 
-# search()
-# detach(df_ARIMA_select)
+search()
+detach(df_ARIMA_select)
 attach(df_ARIMA_select)
 names(df_ARIMA_select)
 
@@ -700,7 +726,7 @@ summary(lme.res2)
 # Estimate a random effects AR(I)MA(p,q) model using lme (Restricted ML)
 lme.res3 <- lme(# A formula object including the response,
   # the fixed covariates, and any grouping variables
-  fixed = log(count+1) ~ as.factor(day_of_week) + nsahd + nsahd*same_chiefdom + admin3_total_cum_incidence_per_100000pop*nsahd+ lockdown_saturdays + lockdown_saturdays*same_chiefdom + operation_northern_push_current + operation_northern_push_previous +  operation_northern_push_current*operation_northern_push_previous,			# i.e. response variable and explanatory variables 
+  fixed = log(count+1) ~ as.factor(day_of_week) + nsahd + nsahd*same_chiefdom + nsahd*admin3_total_cum_incidence_per_100000pop + lockdown_saturdays + lockdown_saturdays*same_chiefdom + operation_northern_push_current + operation_northern_push_previous +  operation_northern_push_current*operation_northern_push_previous,			# i.e. response variable and explanatory variables 
   
   # The random effects component
   random = ~ 1 | pair_code,						# 1 indicates the intercept and COUNTRY indicates the grouping
