@@ -28,7 +28,7 @@ load("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/20160419_workspace_analyz
 # save.image("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/20160419_workspace_analyze_transition_matrix_3day.RData")
 # load("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/20160419_workspace_analyze_transition_matrix_3day.RData")
 
-#### Load Data ####
+#### Read mobility data ####
 # Load transition matrix
 # data_1day <- read.table("/Users/peakcm/Documents/SLE_Mobility/transition_matrix_collated_1day.csv", header = TRUE, sep = "\t", colClasses = c("character",rep("numeric", times = 103)))
 
@@ -36,10 +36,20 @@ load("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/20160419_workspace_analyz
 
 # data_1day <- read.table("/Users/peakcm/Documents/SLE_Mobility/transition_matrix_collated_3day.csv", header = TRUE, sep = "\t", colClasses = c("character",rep("numeric", times = 103)))
 
+#### Read population data ####
 setwd("/Users/peakcm/Dropbox/Ebola/Spatial Analysis SL PNAS/")
 data_pop_PNAS <- read.csv(file = "PNAS_Population.csv")
 
-#### Manipulate Travel Data ####
+#### Read chiefdom distance data ####
+setwd("/Users/peakcm/Documents/2014 Cholera OCV/Data - Analysis/Spatial Analysis/Neighborhood Matrices/Admin 3/")
+data_chiefdom_distances <- read.csv(file = "Distance_km_nothresh.csv", header = FALSE)
+names(data_chiefdom_distances) <- c("Chief1", "Chief2", "distance")
+
+#### Read ebola incidence data ####
+data_ebola_chiefdom_daily_melt <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_ebola_chiefdom_daily_melt.csv")
+data_ebola_chiefdom_daily_melt <- data_ebola_chiefdom_daily_melt[order(data_ebola_chiefdom_daily_melt$CHCODE, data_ebola_chiefdom_daily_melt$variable),]
+
+#### Manipulate mobility data ####
 # split location tuple into two columns
 nchar(data_1day[1,"tower_pair"])
 summary(nchar(data_1day[,"tower_pair"]))
@@ -117,10 +127,10 @@ fcn_link_tower_political_unit <- function(cell_id, tower_locations, admin_unit, 
           return(3204)
         } else {
           return(output[1])
-          }
-        } else {return(output[1])}
-      }
+        }
+      } else {return(output[1])}
     }
+  }
 }
 
 collapsed <- TRUE #Collapse the chiefdoms down to a list where we have ebola data
@@ -129,7 +139,7 @@ collapsed <- TRUE #Collapse the chiefdoms down to a list where we have ebola dat
 data_1day$admin3_current <- sapply(data_1day$cell_id_current, function(x) fcn_link_tower_political_unit(x, tower_locations, "admin3", collapsed))
 data_1day$admin2_current <- sapply(data_1day$cell_id_current, function(x) fcn_link_tower_political_unit(x, tower_locations, "admin2"))
 data_1day$admin1_current <- sapply(data_1day$cell_id_current, function(x) fcn_link_tower_political_unit(x, tower_locations, "admin1"))
- 
+
 data_1day$admin3_previous <- sapply(data_1day$cell_id_previous, function(x) fcn_link_tower_political_unit(x, tower_locations, "admin3", collapsed))
 data_1day$admin2_previous <- sapply(data_1day$cell_id_previous, function(x) fcn_link_tower_political_unit(x, tower_locations, "admin2"))
 data_1day$admin1_previous <- sapply(data_1day$cell_id_previous, function(x) fcn_link_tower_political_unit(x, tower_locations, "admin1"))
@@ -187,7 +197,7 @@ ggplot(data_1day_melt[data_1day_melt$cell_id_current %in% cell_1 & data_1day_mel
 data_1day_melt <- data_1day_melt[order(data_1day_melt$cell_id_current, data_1day_melt$cell_id_previous, data_1day_melt$date),]
 
 data_1day_tower_cumtrips <- dcast(data_1day_melt,
-                                    cell_id_current + cell_id_previous + tower_pair + 
+                                  cell_id_current + cell_id_previous + tower_pair + 
                                     admin3_current + admin3_previous +
                                     admin2_current + admin2_previous +
                                     admin1_current + admin1_previous ~ . , sum, value.var = "count" )
@@ -208,20 +218,45 @@ names(data_1day_chiefdom)[length(names(data_1day_chiefdom))] <- "trips"
 head(data_1day_chiefdom)
 hist(log(data_1day_chiefdom$trips))
 hist(log(data_1day_chiefdom[data_1day_chiefdom$admin3_current == 4299,]$trips))
-ggplot(data = data_1day_chiefdom[data_1day_chiefdom$admin3_previous == 4299,], aes(x = date, y = log10(trips), group = admin3_current, color = admin3_current)) + geom_line()
-data_1day_chiefdom[data_1day_chiefdom$admin3_current == 1102 & data_1day_chiefdom$admin3_previous == 1102 & data_1day_chiefdom$date == "2015-03-27",]
 
+# Create a dataset with normalized trips between chiefdoms
+data_1day_chiefdom_normalized <- data_1day_chiefdom
+data_1day_chiefdom_normalized$trips_normalized <- NA
+
+for (admin3_curr in unique(data_1day_chiefdom_normalized$admin3_current)){
+  for (admin3_prev in unique(data_1day_chiefdom_normalized[data_1day_chiefdom_normalized$admin3_current == admin3_curr,"admin3_previous"])){
+    trips <- data_1day_chiefdom_normalized[data_1day_chiefdom_normalized$admin3_current == admin3_curr &
+                                    data_1day_chiefdom_normalized$admin3_previous == admin3_prev, "trips"]
+    trips_norm <- trips - mean(trips[2:length(trips)])
+    trips_norm[1] <- 0
+    data_1day_chiefdom_normalized[data_1day_chiefdom_normalized$admin3_current == admin3_curr & data_1day_chiefdom_normalized$admin3_previous == admin3_prev, "trips_normalized"] <- trips_norm
+  }
+  cat(".")
+}
+
+# Plot number of trips from a certain chiefdom
+ggplot(data = data_1day_chiefdom[data_1day_chiefdom$admin3_previous == 3108,], aes(x = date, y = log10(trips), group = admin3_current, color = admin3_current)) + 
+  geom_line(alpha = 0.5)
+
+ggplot(data = data_1day_chiefdom_normalized[data_1day_chiefdom_normalized$admin3_previous == 2406,], aes(x = date, y = trips_normalized, group = admin3_current, color = admin3_current)) + 
+  geom_line(alpha = 0.5) +
+  ylim(-1000, 1000)
+
+# Add weekday indicator
 data_1day_melt_chiefdom$day_of_week <- as.factor(as.POSIXlt(data_1day_melt_chiefdom$date)$wday)
 
+# Add NSAHD intervention
 data_1day_melt_chiefdom$nsahd <- 0
 data_1day_melt_chiefdom[data_1day_melt_chiefdom$date == "2015-03-27" |
                           data_1day_melt_chiefdom$date == "2015-03-28" |
                           data_1day_melt_chiefdom$date =="2015-03-29","nsahd"] <- 1
 
+# Manipulate pair indicator
 data_1day_melt_chiefdom$pair <- factor(paste(as.character(data_1day_melt_chiefdom$admin3_current), as.character(data_1day_melt_chiefdom$admin3_previous)))
 
 data_1day_melt_chiefdom_na.rm <- data_1day_melt_chiefdom[is.na(data_1day_melt_chiefdom$admin3_current)==0 & is.na(data_1day_melt_chiefdom$admin3_previous)==0,]
 
+#Add indicator for same chiefdom (ie, not a trip)
 data_1day_melt_chiefdom_na.rm$same_chiefdom <- 0
 data_1day_melt_chiefdom_na.rm[data_1day_melt_chiefdom_na.rm$admin3_current == data_1day_melt_chiefdom_na.rm$admin3_previous, "same_chiefdom"] <- 1
 
@@ -259,99 +294,11 @@ head(data_1day_chiefdom_na.rm)
 head(data_1day_chiefdom_na.rm[data_1day_chiefdom_na.rm$admin3_current == 1102 & data_1day_chiefdom_na.rm$admin3_previous==1102,])
 
 # format for a very very long time series 
- # Create a single sequence of number of trips between chiefdoms with NA's in between, holding periodicity
- # Can add an external varaible for the NSAHD's 000011100000....000NANANANANANA00000111100000... etc
- # Can add external variable for incidence (consider rolling average) in source, destination, and difference between two
+# Create a single sequence of number of trips between chiefdoms with NA's in between, holding periodicity
+# Can add an external varaible for the NSAHD's 000011100000....000NANANANANANA00000111100000... etc
+# Can add external variable for incidence (consider rolling average) in source, destination, and difference between two
 
-#### Save/Load dataset ####
-# write.csv(data_1day_melt_chiefdom_na.rm, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_1day_melt_chiefdom_na.rm.csv")
-# data_1day_melt_chiefdom_na.rm <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_1day_melt_chiefdom_na.rm.csv")
-
-# write.csv(data_1day_melt_chiefdom_na.rm, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_2day_melt_chiefdom_na.rm.csv")
-# data_1day_melt_chiefdom_na.rm <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_2day_melt_chiefdom_na.rm.csv")
-
-write.csv(data_1day_melt_chiefdom_na.rm, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_3day_melt_chiefdom_na.rm.csv")
-data_1day_melt_chiefdom_na.rm <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_3day_melt_chiefdom_na.rm.csv")
-
-#### Borrow from Christopher Adolph's method. Topic 7. "panelGMMtemplate.r ####
-CHList <- unique(as.character(data_1day_chiefdom_na.rm$admin3_current))
-nCH <- length(CHList)
-dateList <- unique(data_1day_melt$date)
-ndate <- length(dateList)
-tripsMat <- casesMat <- popMat <- NULL
-
-# Change structure so that each column is a chiefdom pair and each row is a day
-data_1day_chiefdom_na.rm_transpose <- t(data_1day_chiefdom_na.rm)
-colnames <- data_1day_chiefdom_na.rm_transpose[c(1,2),]
-colnames <- rbind(colnames, seq(1, nrow(colnames)))
-nCH_pairs <- ncol(colnames)
-tripsMat <- data_1day_chiefdom_na.rm_transpose[3:nrow(data_1day_chiefdom_na.rm_transpose),]
-tripsMat_log10 <- log10(tripsMat+1) 
-
-tripsTrace <- polylinesTile(y=tripsMat_log10,
-                             x=matrix(dateList, nrow=ndate, ncol=nCH_pairs),
-                             id=matrix(1:nCH_pairs, nrow=ndate, ncol=nCH_pairs, byrow=TRUE),
-                             col="gray75",
-                             plot=1)
-
-tile(tripsTrace)
-
-# Panel based diagnostics available in the plm library
-# First, create a plm data frame (special data frame that "knows" the unit variable and time variable
-pdata <- pdata.frame(data_1day_melt_chiefdom, index=c("pair", "date"))
-
-pgmmformula.1a <- count ~ nsahd
-
-#### Borrow from Christopher Adolph's method. Topic 6. "panelARIMAtemplate.r ####
-
-df_ARIMA <- data_1day_melt_chiefdom_na.rm
-
-# Create lags and differences now to correctly listwise delete
-count_lag0 <- lagpanel(df_ARIMA$count, df_ARIMA$pair, df_ARIMA$date, 1) # Y(t-1)
-count_diff0 <- df_ARIMA$count - count_lag0 # Y(t) - Y(t-1)
-count_difflag0 <- lagpanel(count_diff0, df_ARIMA$pair, df_ARIMA$date, 1) # Y(t-1) - Y(t-2)
-count_diff10 <- count_diff0 - count_difflag0 #Trying to calculate the "second difference" [Y(t) - Y(t-1)] - [Y(t-1) - Y(t-2)]
-count_difflag20 <- lagpanel(count_diff0, df_ARIMA$pair, df_ARIMA$date, 2) # Y(t-2) - Y(t-3)
-
-# Create a code for the chiefdom pairs
-pair_codebook <- data.frame(pair = unique(df_ARIMA$pair), pair_code = seq(1, length(unique(df_ARIMA$pair))))
-pair_converter <- function(pair, codebook){
-  codebook[codebook$pair == pair, "pair_code"][1]
-}
-pair_converter("1102 1110", pair_codebook)
-
-df_ARIMA$pair_code <- rep(seq(1, length(unique(df_ARIMA$pair))), each = length(unique(df_ARIMA$date)))
-
-# Check to make sure df_ARIMA$pair_code is done correctly
-for (row in floor(runif(n = 100, min = 1, max = nrow(df_ARIMA)))){
-  if (pair_converter(df_ARIMA[row, "pair"], pair_codebook) != df_ARIMA[row,"pair_code"]){
-    cat("nope")
-  } else {cat(".")}
-}
-
-# Listwise delete using only the data we need
-df_ARIMA_select <- na.omit(cbind(df_ARIMA$pair_code,
-                            as.factor(df_ARIMA$date),
-                            df_ARIMA$count,
-                            df_ARIMA$nsahd,
-                            df_ARIMA$day_of_week,
-                            df_ARIMA$same_chiefdom,
-                            df_ARIMA$admin3_current,
-                            df_ARIMA$admin3_previous,
-                            count_lag0,
-                            count_diff0,
-                            count_difflag0,
-                            count_diff10,
-                            count_difflag20))
-df_ARIMA_select <- as.data.frame(df_ARIMA_select)
-names(df_ARIMA_select) <- c("pair_code","date","count","nsahd",
-                       "day_of_week","same_chiefdom","admin3_current","admin3_previous",
-                       "count_lag", "count_diff", "count_difflag", "count_diff1", "count_difflag2")
-
-# Read ebola incidence data
-data_ebola_chiefdom_daily_melt <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_ebola_chiefdom_daily_melt.csv")
-data_ebola_chiefdom_daily_melt <- data_ebola_chiefdom_daily_melt[order(data_ebola_chiefdom_daily_melt$CHCODE, data_ebola_chiefdom_daily_melt$variable),]
-
+#### Manipulate ebola incidence data ####
 length(unique(c(unique(data_ebola_chiefdom_daily_melt$CHCODE), unique(df_ARIMA_select$admin3_current))))
 relevant_CHCODES <- sort(unique(c(unique(data_ebola_chiefdom_daily_melt$CHCODE), unique(df_ARIMA_select$admin3_current))))
 CHCODES_missing_from_travel_data <- relevant_CHCODES[which(relevant_CHCODES %in% df_ARIMA_select$admin3_current == FALSE)]
@@ -396,7 +343,106 @@ for (counter in start:end){
 
 sum(data_ebola_chiefdom_daily_melt[data_ebola_chiefdom_daily_melt$date %in% 103, "variable"] != "2015-06-30")
 
-# Add ebola data to travel dataset
+#### Save/Load dataset ####
+# write.csv(data_1day_melt_chiefdom_na.rm, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_1day_melt_chiefdom_na.rm.csv")
+# data_1day_melt_chiefdom_na.rm <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_1day_melt_chiefdom_na.rm.csv")
+
+# write.csv(data_1day_melt_chiefdom_na.rm, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_2day_melt_chiefdom_na.rm.csv")
+# data_1day_melt_chiefdom_na.rm <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_2day_melt_chiefdom_na.rm.csv")
+
+write.csv(data_1day_melt_chiefdom_na.rm, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_3day_melt_chiefdom_na.rm.csv")
+data_1day_melt_chiefdom_na.rm <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/data_3day_melt_chiefdom_na.rm.csv")
+
+#### Plot trace in each chiefdom ####
+# Adapted from Christopher Adolph's method. Topic 7. "panelGMMtemplate.r"
+
+CHList <- unique(as.character(data_1day_chiefdom_na.rm$admin3_current))
+nCH <- length(CHList)
+dateList <- unique(data_1day_melt$date)
+ndate <- length(dateList)
+tripsMat <- casesMat <- popMat <- NULL
+
+# Change structure so that each column is a chiefdom pair and each row is a day
+data_1day_chiefdom_na.rm_transpose <- t(data_1day_chiefdom_na.rm)
+colnames <- data_1day_chiefdom_na.rm_transpose[c(1,2),]
+colnames <- rbind(colnames, seq(1, nrow(colnames)))
+nCH_pairs <- ncol(colnames)
+tripsMat <- data_1day_chiefdom_na.rm_transpose[3:nrow(data_1day_chiefdom_na.rm_transpose),]
+tripsMat_log10 <- log10(tripsMat+1) 
+
+tripsTrace <- polylinesTile(y=tripsMat_log10,
+                             x=matrix(dateList, nrow=ndate, ncol=nCH_pairs),
+                             id=matrix(1:nCH_pairs, nrow=ndate, ncol=nCH_pairs, byrow=TRUE),
+                             col="gray75",
+                             plot=1)
+
+tile(tripsTrace)
+
+# Panel based diagnostics available in the plm library
+# First, create a plm data frame (special data frame that "knows" the unit variable and time variable
+pdata <- pdata.frame(data_1day_melt_chiefdom, index=c("pair", "date"))
+
+pgmmformula.1a <- count ~ nsahd
+
+#### Create time series data structure ####
+# Adapted from Christopher Adolph's method. Topic 6. "panelARIMAtemplate.r
+df_ARIMA <- data_1day_melt_chiefdom_na.rm
+
+# Create lags and differences now to correctly listwise delete
+count_lag0 <- lagpanel(df_ARIMA$count, df_ARIMA$pair, df_ARIMA$date, 1) # Y(t-1)
+count_diff0 <- df_ARIMA$count - count_lag0 # Y(t) - Y(t-1)
+count_difflag0 <- lagpanel(count_diff0, df_ARIMA$pair, df_ARIMA$date, 1) # Y(t-1) - Y(t-2)
+count_diff10 <- count_diff0 - count_difflag0 #Trying to calculate the "second difference" [Y(t) - Y(t-1)] - [Y(t-1) - Y(t-2)]
+count_difflag20 <- lagpanel(count_diff0, df_ARIMA$pair, df_ARIMA$date, 2) # Y(t-2) - Y(t-3)
+
+# Create a code for the chiefdom pairs
+pair_codebook <- data.frame(pair = unique(df_ARIMA$pair), pair_code = seq(1, length(unique(df_ARIMA$pair))))
+pair_converter <- function(pair, codebook){
+  codebook[codebook$pair == pair, "pair_code"][1]
+}
+pair_converter("1102 1110", pair_codebook)
+
+df_ARIMA$pair_code <- rep(seq(1, length(unique(df_ARIMA$pair))), each = length(unique(df_ARIMA$date)))
+
+# Check to make sure df_ARIMA$pair_code is done correctly
+for (row in floor(runif(n = 100, min = 1, max = nrow(df_ARIMA)))){
+  if (pair_converter(df_ARIMA[row, "pair"], pair_codebook) != df_ARIMA[row,"pair_code"]){
+    cat("nope")
+  } else {cat(".")}
+}
+
+# Listwise delete using only the data we need
+df_ARIMA_select <- na.omit(cbind(df_ARIMA$pair_code,
+                            as.factor(df_ARIMA$date),
+                            df_ARIMA$count,
+                            df_ARIMA$nsahd,
+                            df_ARIMA$day_of_week,
+                            df_ARIMA$same_chiefdom,
+                            df_ARIMA$admin3_current,
+                            df_ARIMA$admin3_previous,
+                            count_lag0,
+                            count_diff0,
+                            count_difflag0,
+                            count_diff10,
+                            count_difflag20))
+df_ARIMA_select <- as.data.frame(df_ARIMA_select)
+names(df_ARIMA_select) <- c("pair_code","date","count","nsahd",
+                       "day_of_week","same_chiefdom","admin3_current","admin3_previous",
+                       "count_lag", "count_diff", "count_difflag", "count_diff1", "count_difflag2")
+
+# Drop first day, with no observations
+df_ARIMA_select <- df_ARIMA_select[df_ARIMA_select$date > 4,]
+
+#### Add population data to time series struture ####
+df_ARIMA_select$population_current <- NA
+df_ARIMA_select$population_previous <- NA
+
+for (chief in unique(df_ARIMA_select$admin3_current)){
+  df_ARIMA_select[df_ARIMA_select$admin3_current == chief, "population_current"] <- data_pop_PNAS[data_pop_PNAS$CHCODE == chief, "Total2014Inferred"]
+  df_ARIMA_select[df_ARIMA_select$admin3_previous == chief, "population_previous"] <- data_pop_PNAS[data_pop_PNAS$CHCODE == chief, "Total2014Inferred"]
+}
+
+#### Add ebola data to time series structure ####
 df_ARIMA_select$admin3_current_daily_incidence <- NA
 df_ARIMA_select$admin3_previous_daily_incidence <- NA
 
@@ -426,10 +472,11 @@ df_ARIMA_select$admin3_previous_minus_current_cum_incidence <- df_ARIMA_select$a
 df_ARIMA_select$admin3_total_weekly_incidence <- df_ARIMA_select$admin3_previous_weekly_incidence + df_ARIMA_select$admin3_current_weekly_incidence
 df_ARIMA_select$admin3_previous_minus_current_weekly_incidence <- df_ARIMA_select$admin3_previous_weekly_incidence - df_ARIMA_select$admin3_current_weekly_incidence
 
-# Drop first day, with no observations
-df_ARIMA_select <- df_ARIMA_select[df_ARIMA_select$date > 4,]
+# Add ebola incidence per capita data
+df_ARIMA_select$admin3_total_cum_incidence_per_100000pop <- NA
+df_ARIMA_select$admin3_total_cum_incidence_per_100000pop <- 100000 * df_ARIMA_select$admin3_total_cum_incidence / (df_ARIMA_select$population_current + df_ARIMA_select$population_previous)
 
-# Add intervention data (local quarantines)
+#### Add intervention data to time series structure ####
 lockdown_saturdays_list <- as.numeric(as.Date(c("2015-04-04", "2015-04-11", "2015-04-18")) - as.Date("2015-03-23"))
 df_ARIMA_select$lockdown_saturdays <- 0
 df_ARIMA_select[df_ARIMA_select$date %in% lockdown_saturdays_list,"lockdown_saturdays"] <- 1
@@ -450,35 +497,47 @@ df_ARIMA_select$operation_northern_push_current_control <- 0
 df_ARIMA_select[(df_ARIMA_select$admin3_current %in% north_push_chiefdoms)==0 & df_ARIMA_select$date > north_push_start, "operation_northern_push_current_control"] <- 1
 df_ARIMA_select[(df_ARIMA_select$admin3_current %in% north_push_chiefdoms)==0 & df_ARIMA_select$date > north_push_start, "operation_northern_push_previous_control"] <- 1
 
-# Add population data
-setwd("/Users/peakcm/Dropbox/Ebola/Spatial Analysis SL PNAS/")
-data_pop_PNAS <- read.csv(file = "PNAS_Population.csv")
+#### Add chiefdom distances to time series structure ####
+df_ARIMA_select$distance <- NA
+df_ARIMA_select$distance_0to15km <- 0
+df_ARIMA_select$distance_15to30km <- 0
+df_ARIMA_select$distance_30to200km <- 0
 
-df_ARIMA_select$population_current <- NA
-df_ARIMA_select$population_previous <- NA
-
-for (chief in unique(df_ARIMA_select$admin3_current)){
-  df_ARIMA_select[df_ARIMA_select$admin3_current == chief, "population_current"] <- data_pop_PNAS[data_pop_PNAS$CHCODE == chief, "Total2014Inferred"]
-  df_ARIMA_select[df_ARIMA_select$admin3_previous == chief, "population_previous"] <- data_pop_PNAS[data_pop_PNAS$CHCODE == chief, "Total2014Inferred"]
+for (paircode in unique(df_ARIMA_select$pair_code)){
+  if (df_ARIMA_select[df_ARIMA_select$pair_code == paircode,"same_chiefdom"][1] == 1){
+    distance_i <- 0
+  } else{
+    Chief1 <- df_ARIMA_select[df_ARIMA_select$pair_code == paircode, "admin3_current"][1]
+    Chief2 <- df_ARIMA_select[df_ARIMA_select$pair_code == paircode, "admin3_previous"][1]
+    distance_i <- data_chiefdom_distances[data_chiefdom_distances$Chief1 == Chief1 & data_chiefdom_distances$Chief2 == Chief2, "distance"] 
+  }
+  df_ARIMA_select[df_ARIMA_select$pair_code == paircode, "distance"] <- distance_i
+  if (distance_i <= 15){
+    df_ARIMA_select[df_ARIMA_select$pair_code == paircode, "distance_0to15km"] <- 1
+  } else if (distance_i <= 30){
+    df_ARIMA_select[df_ARIMA_select$pair_code == paircode, "distance_15to30km"] <- 1
+  } else {
+    df_ARIMA_select[df_ARIMA_select$pair_code == paircode, "distance_30to200km"] <- 1
+  }
 }
-
-# Add ebola incidence per capita data
-df_ARIMA_select$admin3_total_cum_incidence_per_100000pop <- NA
-df_ARIMA_select$admin3_total_cum_incidence_per_100000pop <- 100000 * df_ARIMA_select$admin3_total_cum_incidence / (df_ARIMA_select$population_current + df_ARIMA_select$population_previous)
+quantile(df_ARIMA_select$distance)
 
 #### Save combined data ####
-# write.csv(df_ARIMA_select, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select.csv") #note that currently, this is the min1000 file
-# write.csv(df_ARIMA_select, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select_2day.csv") #note that currently, this is the min1000 file
-write.csv(df_ARIMA_select, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select_3day.csv") #note that currently, this is the min1000 file
+write.csv(df_ARIMA_select, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select.csv")
+# write.csv(df_ARIMA_select, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select_2day.csv")
+# write.csv(df_ARIMA_select, file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select_3day.csv")
 
-##### Load combined data ####
-# df_ARIMA_select <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select.csv")
+#### Load combined data ####
+df_ARIMA_select <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select.csv")
 # df_ARIMA_select <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select_2day.csv")
-df_ARIMA_select <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select_3day.csv")
+# df_ARIMA_select <- read.csv(file = "/Users/peakcm/Documents/SLE_Mobility/sle_ericson/df_ARIMA_select_3day.csv")
 
 #### Restrict the data to only those pairs with at least 10 trips per day ####
 df_ARIMA_select <- df_ARIMA_select[df_ARIMA_select$pair_code %in% pair_codebook[pair_codebook$pair %in% pairs_cumtrips_min1000,"pair_code"],]
 nrow(df_ARIMA_select)
+
+#### Plot acf, pacf, and unit roots for pairs ####
+# Adapted from Christopher Adolph's method.
 
 # Create a list of the unique chiefdom pairs
 pairlist <- unique(df_ARIMA_select$pair_code)
@@ -649,11 +708,11 @@ ARIMA_output$pdq <- paste(ARIMA_output$p, ARIMA_output$d, ARIMA_output$q, sep = 
 
 sort(tapply(ARIMA_output$AIC, ARIMA_output$pdq, mean)) #2,0,2 seems to be min. 1,0,2 and 1,0,1 are very close too. 2,0,2 is not recommended, though, because p and q are both >1
 
-#### Random Effects Model ####
-# See "Lab_5.R
-
+#### Estiamte a random effects model "lme.res1" using nsahd's only ####
 search()
 detach(df_ARIMA_select)
+detach(df_ARIMA_select_nosame)
+detach(df_ARIMA_select_no4299)
 attach(df_ARIMA_select)
 names(df_ARIMA_select)
 
@@ -689,44 +748,19 @@ summary(lme.res1)
 # 1,0,1 AIC = 
 # 2,0,1 AIC = 
 
-# Include ebola incidence metrics
-# Estimate a random effects AR(I)MA(p,q) model using lme (Restricted ML)
-lme.res2 <- lme(# A formula object including the response,
-  # the fixed covariates, and any grouping variables
-  fixed = log(count+1) ~ as.factor(day_of_week) + nsahd + nsahd*same_chiefdom + admin3_total_cum_incidence*nsahd ,			# i.e. response variable and explanatory variables 
-  
-  # The random effects component
-  random = ~ 1 | pair_code,						# 1 indicates the intercept and COUNTRY indicates the grouping
-  
-  # The TS dynamics: specify the time & group variables,
-  # and the order of the ARMA(p,q) process
-  correlation = corARMA(form = ~ date | pair_code,
-                        p = 1,  # AR(p) order
-                        q = 2   # MA(q) order
-  ) 
-)
-
-# Extract model results
-pe.res2 <- fixed.effects(lme.res2)        # Point estimates of fixed effects
-vc.res2 <- vcov(lme.res2)                 # Var-cov matrix of fixed effects estimates
-se.res2 <- sqrt(diag(vc.res2))            # std erros of fixed effects estimates
-re.res2 <- random.effects(lme.res2)       # "Estimated" random effects by group 
-ll.res2 <- logLik(lme.res2)               # Log-likelihood at maximum
-resid.res2 <- resid(lme.res2)             # Residuals
-aic.res2 <- AIC(lme.res2)                 # Akaike Information Criterion
-
-summary(lme.res2)
-
-# p,d,q AIC
-# Previous and Current weekly incidence plus their interaction with nsahd. 1,0,2. AIC = 41698.85. The weekly incidence wasn't significant on its own, but for each additional 10 cases in the origin (destination) chiefdom, the travel reduced by an additional 6.7% (5.2%)
-# Previous and current cum incidence plus their interaction with nsahd. 1,0,2. AIC = 41455.42. The cumulative incidence weren't significant on their own, but for each additional 100 cases in the origin (destination) chiefdom, the intervention reduced travel by an additional 7.5% (5.9%)
-# Total cum incidence plus its interaction with nsahd. 1,0,2. AIC = 41433.56 The cumulative incidence wasn't significant on its own, but for each additional 100 cases in either the origin or destination chiefdom, the intervention reduced travel by an additional 6.8% (noting results above, the incidence in the origin is slightly more influential, at 7.5% as compared to 5.9%).
+#### Estimate a random effects model "lme.res3" using all intervention and ebola data ####
+search()
+detach(df_ARIMA_select)
+detach(df_ARIMA_select_nosame)
+detach(df_ARIMA_select_no4299)
+attach(df_ARIMA_select)
+names(df_ARIMA_select)
 
 # Include nsahd, saturday lockdowns, operational northern push, and ebola incidence metrics
 # Estimate a random effects AR(I)MA(p,q) model using lme (Restricted ML)
 lme.res3 <- lme(# A formula object including the response,
   # the fixed covariates, and any grouping variables
-  fixed = log(count+1) ~ as.factor(day_of_week) + nsahd + nsahd*same_chiefdom + nsahd*admin3_total_cum_incidence_per_100000pop + lockdown_saturdays + lockdown_saturdays*same_chiefdom + operation_northern_push_current + operation_northern_push_previous +  operation_northern_push_current*operation_northern_push_previous,			# i.e. response variable and explanatory variables 
+  fixed = log(count+1) ~ as.factor(day_of_week) + nsahd + nsahd*same_chiefdom + nsahd*admin3_total_cum_incidence_per_100000pop + lockdown_saturdays + lockdown_saturdays*same_chiefdom + operation_northern_push_current + operation_northern_push_previous +  operation_northern_push_current*operation_northern_push_previous  + nsahd*distance_15to30km + nsahd*distance_30to200km,			# i.e. response variable and explanatory variables 
   
   # The random effects component
   random = ~ 1 | pair_code,						# 1 indicates the intercept and COUNTRY indicates the grouping
@@ -749,27 +783,32 @@ resid.res3 <- resid(lme.res3)             # Residuals
 aic.res3 <- AIC(lme.res3)                 # Akaike Information Criterion
 
 summary(lme.res3)
-1-exp(pe.res3["nsahd"])
-1-exp(100*pe.res3["admin3_total_cum_incidence_per_100000pop"])
-(1- exp(pe.res3["nsahd"] + 10*pe.res3["nsahd:admin3_total_cum_incidence_per_100000pop"])) - (1- exp(pe.res3["nsahd"]))
-1-exp(pe.res3["operation_northern_push_current"])
-1-exp(pe.res3["operation_northern_push_previous"])
+1- exp(pe.res3["nsahd"])
+1- exp(pe.res3["nsahd"] + 1.96*se.res3["nsahd"]); 1- exp(pe.res3["nsahd"] - 1.96*se.res3["nsahd"])
+1- exp(100*pe.res3["admin3_total_cum_incidence_per_100000pop"])
+1- exp(100*pe.res3["nsahd:admin3_total_cum_incidence_per_100000pop"])
+1- exp(pe.res3["operation_northern_push_current"])
+1- exp(pe.res3["operation_northern_push_previous"])
+1- (exp(pe.res3["nsahd"] + pe.res3["nsahd:distance_15to30km"])) 
+1- (exp(pe.res3["nsahd"] + pe.res3["nsahd:distance_30to200km"])) 
+
 
 # AIC = 40421.89 including nsahd, total_cum_incidence_per_100000pop, lockdown_saturdays, operation_northern_push_current, operation_northern_push_previous, and each of their interactions with same_chiefdom. However, lockdown_saturdays are turning up positive, even when a fixed effect for day_of_week is added. Consider interacting these?
 
-#### Random effects model, excluding freetown ####
-
+#### Repeat random effects model, but now excluding freetown "lme.res3_no4299" ####
 search()
 detach(df_ARIMA_select)
+detach(df_ARIMA_select_nosame)
+detach(df_ARIMA_select_no4299)
 df_ARIMA_select_no4299 <- df_ARIMA_select[(df_ARIMA_select$admin3_current %in% "4299") == 0 & (df_ARIMA_select$admin3_previous %in% "4299") == 0,]
 attach(df_ARIMA_select_no4299)
 names(df_ARIMA_select_no4299)
 
 # Include ebola incidence metrics
 # Estimate a random effects AR(I)MA(p,q) model using lme (Restricted ML)
-lme.res2_no4299 <- lme(# A formula object including the response,
+lme.res3_no4299 <- lme(# A formula object including the response,
   # the fixed covariates, and any grouping variables
-  fixed = log(count+1) ~ nsahd + nsahd*same_chiefdom + admin3_total_cum_incidence*nsahd ,			# i.e. response variable and explanatory variables 
+  fixed = log(count+1) ~ as.factor(day_of_week) + nsahd + nsahd*same_chiefdom + nsahd*admin3_total_cum_incidence_per_100000pop + lockdown_saturdays + lockdown_saturdays*same_chiefdom + operation_northern_push_current + operation_northern_push_previous +  operation_northern_push_current*operation_northern_push_previous  + nsahd*distance_15to30km + nsahd*distance_30to60km + nsahd*distance_60to200km,			# i.e. response variable and explanatory variables 
   
   # The random effects component
   random = ~ 1 | pair_code,						# 1 indicates the intercept and COUNTRY indicates the grouping
@@ -783,33 +822,43 @@ lme.res2_no4299 <- lme(# A formula object including the response,
 )
 
 # Extract model results
-pe.res2_no4299 <- fixed.effects(lme.res2_no4299)        # Point estimates of fixed effects
-vc.res2_no4299 <- vcov(lme.res2_no4299)                 # Var-cov matrix of fixed effects estimates
-se.res2_no4299 <- sqrt(diag(vc.res2_no4299))            # std erros of fixed effects estimates
-re.res2_no4299 <- random.effects(lme.res2_no4299)       # "Estimated" random effects by group 
-ll.res2_no4299 <- logLik(lme.res2_no4299)               # Log-likelihood at maximum
-resid.res2_no4299 <- resid(lme.res2_no4299)             # Residuals
-aic.res2_no4299 <- AIC(lme.res2_no4299)                 # Akaike Information Criterion
+pe.res3_no4299 <- fixed.effects(lme.res3_no4299)        # Point estimates of fixed effects
+vc.res3_no4299 <- vcov(lme.res3_no4299)                 # Var-cov matrix of fixed effects estimates
+se.res3_no4299 <- sqrt(diag(vc.res3_no4299))            # std erros of fixed effects estimates
+re.res3_no4299 <- random.effects(lme.res3_no4299)       # "Estimated" random effects by group 
+ll.res3_no4299 <- logLik(lme.res3_no4299)               # Log-likelihood at maximum
+resid.res3_no4299 <- resid(lme.res3_no4299)             # Residuals
+aic.res3_no4299 <- AIC(lme.res3_no4299)                 # Akaike Information Criterion
 
-summary(lme.res2_no4299)
+summary(lme.res3_no4299)
+1- exp(pe.res3["nsahd"])
+1- exp(100*pe.res3["admin3_total_cum_incidence_per_100000pop"])
+1- exp(100*pe.res3["nsahd:admin3_total_cum_incidence_per_100000pop"])
+1- exp(pe.res3["operation_northern_push_current"])
+1- exp(pe.res3["operation_northern_push_previous"])
+1- (exp(pe.res3["nsahd"] + pe.res3["nsahd:distance_15to30km"])) 
+1- (exp(pe.res3["nsahd"] + pe.res3["nsahd:distance_30to60km"])) 
+1- (exp(pe.res3["nsahd"] + pe.res3["nsahd:distance_60to200km"])) 
 
 # p,d,q AIC
 # Total cum incidence plus its interaction with nsahd. Excluding any trips to or from Freetown. 1,0,2. AIC = 34970.3. The effect of nsahds was simlar, at a 46% decrease in travel (as opposed to a 53% decrease including Freetown). The cumulative incidence still wasn't significant on its own, but for each additional 100 cases in either the origin or destination chiefdom, the intervention reduced travel by an additional 17%, which is twice as influential as when we Freetown
 # Consider adding a variable for (distance between chiefdoms) as an effect modifier. Did closer trips get more affected by nsahds?
 
-#### Random effects model, excluding travel within chiefdoms ####
+#### Repeat random effects model, but now excluding travel within chiefdoms "lme.res3_nosame ####
 
 search()
 detach(df_ARIMA_select)
+detach(df_ARIMA_select_nosame)
+detach(df_ARIMA_select_no4299)
 df_ARIMA_select_nosame <- df_ARIMA_select[(df_ARIMA_select$same_chiefdom == 0),]
 attach(df_ARIMA_select_nosame)
 names(df_ARIMA_select_nosame)
 
 # Include ebola incidence metrics
 # Estimate a random effects AR(I)MA(p,q) model using lme (Restricted ML)
-lme.res2_nosame <- lme(# A formula object including the response,
+lme.res3_nosame <- lme(# A formula object including the response,
   # the fixed covariates, and any grouping variables
-  fixed = log(count+1) ~ as.factor(day_of_week) + nsahd + admin3_total_cum_incidence*nsahd + lockdown_saturdays + operation_northern_push_current + operation_northern_push_previous +  operation_northern_push_current*operation_northern_push_previous,			# i.e. response variable and explanatory variables 
+  fixed = log(count+1) ~ as.factor(day_of_week) + nsahd + nsahd*admin3_total_cum_incidence_per_100000pop + lockdown_saturdays + operation_northern_push_current + operation_northern_push_previous +  operation_northern_push_current*operation_northern_push_previous  + nsahd*distance_15to30km + nsahd*distance_30to60km + nsahd*distance_60to200km,			# i.e. response variable and explanatory variables 
   
   # The random effects component
   random = ~ 1 | pair_code,						# 1 indicates the intercept and COUNTRY indicates the grouping
@@ -823,22 +872,31 @@ lme.res2_nosame <- lme(# A formula object including the response,
 )
 
 # Extract model results
-pe.res2_nosame <- fixed.effects(lme.res2_nosame)        # Point estimates of fixed effects
-vc.res2_nosame <- vcov(lme.res2_nosame)                 # Var-cov matrix of fixed effects estimates
-se.res2_nosame <- sqrt(diag(vc.res2_nosame))            # std erros of fixed effects estimates
-re.res2_nosame <- random.effects(lme.res2_nosame)       # "Estimated" random effects by group 
-ll.res2_nosame <- logLik(lme.res2_nosame)               # Log-likelihood at maximum
-resid.res2_nosame <- resid(lme.res2_nosame)             # Residuals
-aic.res2_nosame <- AIC(lme.res2_nosame)                 # Akaike Information Criterion
+pe.res3_nosame <- fixed.effects(lme.res3_nosame)        # Point estimates of fixed effects
+vc.res3_nosame <- vcov(lme.res3_nosame)                 # Var-cov matrix of fixed effects estimates
+se.res3_nosame <- sqrt(diag(vc.res3_nosame))            # std erros of fixed effects estimates
+re.res3_nosame <- random.effects(lme.res3_nosame)       # "Estimated" random effects by group 
+ll.res3_nosame <- logLik(lme.res3_nosame)               # Log-likelihood at maximum
+resid.res3_nosame <- resid(lme.res3_nosame)             # Residuals
+aic.res3_nosame <- AIC(lme.res3_nosame)                 # Akaike Information Criterion
 
-plot(exp(pe.res2_nosame[2:7]), type = "l", main = "Fixed effect for day of week\n(Ref: Sunday)", xlab = "Day of week", ylab = "Effect Size")
-hist(resid.res2_nosame, breaks = 100)
-summary(lme.res2_nosame)
+plot(exp(pe.res3_nosame[2:7]), type = "l", main = "Fixed effect for day of week\n(Ref: Sunday)", xlab = "Day of week", ylab = "Effect Size")
+hist(resid.res3_nosame, breaks = 100)
+summary(lme.res3_nosame)
+1- exp(pe.res3_nosame["nsahd"])
+exp(pe.res3_nosame["lockdown_saturdays"]) - 1
+1- exp(100*pe.res3_nosame["admin3_total_cum_incidence_per_100000pop"])
+1- exp(100*pe.res3_nosame["nsahd:admin3_total_cum_incidence_per_100000pop"])
+1- exp(pe.res3_nosame["operation_northern_push_current"])
+1- exp(pe.res3_nosame["operation_northern_push_previous"])
+1- (exp(pe.res3_nosame["nsahd"] + pe.res3_nosame["nsahd:distance_15to30km"])) 
+1- (exp(pe.res3_nosame["nsahd"] + pe.res3_nosame["nsahd:distance_30to60km"])) 
+1- (exp(pe.res3_nosame["nsahd"] + pe.res3_nosame["nsahd:distance_60to200km"])) 
 
 # p,d,q AIC
-# AIC = 39469.5. Same patterns for day_of_week. nsahd 54% reduction in travel, and an extra 7% reduction per 100 cases. 1% increase in travel per 100 cases. 1% increase in travel during lockdown saturdays. If the destination or origin were in operation northern push, there was a decrease in travel.
+# AIC = 38322.44. Same patterns for day_of_week. NSAHDs 29% reduction in travel within 15km, 43% reduction in travel between 15km and 30km, and approximately 74-75% reduction in travel greater than 30km. An increase of 100 cases per 100,000 in either the source or destination chiefdom was associated with a 9% decrease in travel and an additional 37% decrease during lockdown days. 7% increase in travel during lockdown saturdays. If the destination or origin were in operation northern push, there was a decrease in travel of 6% and 4.5%, respectively.
 
-#### Mixed effects model ####
+#### Mixed effects model. can't handle all the time invariant variables though ####
 
 search()
 detach(df_ARIMA_select_no4299)
@@ -897,7 +955,7 @@ library(AnomalyDetection)
 
 #travel data
 ch_curr <- 4299
-ch_prev <- 4199
+ch_prev <- 2203
 
 extract <- df_ARIMA[df_ARIMA$admin3_current == ch_curr & df_ARIMA$admin3_previous == ch_prev,c("date", "count")]
 extract$date <- as.POSIXct(extract$date)
@@ -905,8 +963,23 @@ extract$date <- as.POSIXct(extract$date)
 extract <- extract[extract$date >= as.POSIXct("2015-03-20"),]
 
 res = AnomalyDetectionTs(extract,max_anoms = 0.02, direction = 'both', plot = TRUE)
-res$plot
 res$anoms
+res$plot
+
+ggplot(res$plot$data) +
+  theme_bw() +
+  geom_rect(aes(xmin = as.POSIXlt("2015-03-26 20:00:00"), xmax = as.POSIXlt("2015-03-29 20:00:00"), ymin = 0, ymax = max(res$plot$data$count)*1.05), fill = "lightgrey", alpha = 0.2) +
+  geom_rect(aes(xmin = as.POSIXlt("2015-06-14 20:00:00"), xmax = max(res$plot$data$timestamp), ymin = 0, ymax = max(res$plot$data$count)*1.05), fill = "lightgrey", alpha = 0.2) +
+  geom_line(aes(x = timestamp, y = count), color = "salmon") +
+  geom_point(data = res$anoms, aes(x = timestamp, y = anoms), color = "black", size = 4, shape = 1) +
+  ylab("Number of Trips") +
+  xlab("Date") +
+  ylim(0, max(res$plot$data$count)*1.1) +
+  ggtitle("Daily Trips between Freetown and Kambia") +
+  annotate("text", x = as.POSIXlt("2015-03-28 20:00:00"), y = max(res$plot$data$count)*1.1, label = "Lockdown", color = "darkgrey", hjust = 0.5) +
+  annotate("text", x = as.POSIXlt("2015-06-21 20:00:00"), y = max(res$plot$data$count)*1.1, label = "Operation\nNorthern Push", color = "darkgrey", hjust = 0.5) +
+  annotate("text", x = as.POSIXlt("2015-03-29 20:00:00"), y = 5, label = "Anomalies Detected", color = "black", hjust = 0)  
+
 
 # Record anomalies
 neg_anom_data <- data.frame(matrix(NA, nrow = 1, ncol = 2))
