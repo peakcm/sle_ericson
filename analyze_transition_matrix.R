@@ -28,13 +28,20 @@ load("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/20160419_workspace_analyz
 # save.image("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/20160419_workspace_analyze_transition_matrix_3day.RData")
 # load("/Users/peakcm/Documents/SLE_Mobility/sle_ericson/20160419_workspace_analyze_transition_matrix_3day.RData")
 
-#### Read mobility data ####
+#### Read 2015 mobility data ####
 # Load transition matrix
-# data_1day <- read.table("/Users/peakcm/Documents/SLE_Mobility/transition_matrix_collated_1day.csv", header = TRUE, sep = "\t", colClasses = c("character",rep("numeric", times = 103)))
+data_1day <- read.table("/Users/peakcm/Documents/SLE_Mobility/transition_matrix_collated_1day.csv", header = TRUE, sep = "\t", colClasses = c("character",rep("numeric", times = 103)))
 
 # data_1day <- read.table("/Users/peakcm/Documents/SLE_Mobility/transition_matrix_collated_2day.csv", header = TRUE, sep = "\t", colClasses = c("character",rep("numeric", times = 103)))
 
 # data_1day <- read.table("/Users/peakcm/Documents/SLE_Mobility/transition_matrix_collated_3day.csv", header = TRUE, sep = "\t", colClasses = c("character",rep("numeric", times = 103)))
+
+#### Read 2014 mobility data ####
+data_1day <- read.table("/Users/peakcm/Documents/SLE_Mobility/transition_matrix_collated_1day_2014.csv", header = TRUE, sep = "\t", colClasses = c("character",rep("numeric", times = 230)))
+
+# data_1day <- read.table("/Users/peakcm/Documents/SLE_Mobility/transition_matrix_collated_2day_2014.csv", header = TRUE, sep = "\t", colClasses = c("character",rep("numeric", times = 230)))
+
+# data_1day <- read.table("/Users/peakcm/Documents/SLE_Mobility/transition_matrix_collated_3day_2014.csv", header = TRUE, sep = "\t", colClasses = c("character",rep("numeric", times = 230)))
 
 #### Read population data ####
 setwd("/Users/peakcm/Dropbox/Ebola/Spatial Analysis SL PNAS/")
@@ -53,8 +60,8 @@ data_ebola_chiefdom_daily_melt <- data_ebola_chiefdom_daily_melt[order(data_ebol
 # split location tuple into two columns
 nchar(data_1day[1,"tower_pair"])
 summary(nchar(data_1day[,"tower_pair"]))
-(x <- data_1day[54942,"tower_pair"]) # for a 6-character-long one
-(x <- data_1day[59527,"tower_pair"]) # for a 14-character-long one
+(x <- data_1day[20,"tower_pair"]) # for a 6-character-long one
+(x <- data_1day[30,"tower_pair"]) # for a 14-character-long one
 
 (first <- substr(x, start = 2, stop = regexpr(",", x)[1]-1))
 (second <- substr(x, start = regexpr(",", x)[1]+2, stop = nchar(x)-1))
@@ -78,6 +85,7 @@ summary(cell_ids_first)
 cell_ids_second <- as.numeric(as.character(sapply(data_1day$tower_pair, function(x) fcn_split_loc_tuple(x, choice = 2))))
 head(cell_ids_second, 100)
 summary(cell_ids_second)
+sum(cell_ids_first != cell_ids_second) # Check if they match. A zero is concerning...
 
 data_1day <- data.frame(cbind(cell_ids_first, cell_ids_second, data_1day))
 names(data_1day)[1] <- "cell_id_current"
@@ -966,28 +974,244 @@ res = AnomalyDetectionTs(extract,max_anoms = 0.02, direction = 'both', plot = TR
 res$anoms
 res$plot
 
-ggplot(res$plot$data) +
+#### Plot an example pair (Freetown, Magbema) ####
+pair_example <- ggplot(res$plot$data) +
   theme_bw() +
-  geom_rect(aes(xmin = as.POSIXlt("2015-03-26 20:00:00"), xmax = as.POSIXlt("2015-03-29 20:00:00"), ymin = 0, ymax = max(res$plot$data$count)*1.05), fill = "lightgrey", alpha = 0.2) +
-  geom_rect(aes(xmin = as.POSIXlt("2015-06-14 20:00:00"), xmax = max(res$plot$data$timestamp), ymin = 0, ymax = max(res$plot$data$count)*1.05), fill = "lightgrey", alpha = 0.2) +
+  theme(panel.border = element_blank()) +
+  theme(panel.grid.major = element_blank()) +
+  theme(panel.grid.minor = element_blank()) +
+  geom_rect(aes(xmin = as.POSIXlt("2015-03-26 20:00:00"), xmax = as.POSIXlt("2015-03-29 20:00:00"), ymin = 0, ymax = max(res$plot$data$count)*1.03), fill = "lightgrey", alpha = 0.2) +
+  geom_rect(aes(xmin = as.POSIXlt("2015-06-14 20:00:00"), xmax = max(res$plot$data$timestamp), ymin = 0, ymax = max(res$plot$data$count)*1.03), fill = "lightgrey", alpha = 0.2) +
   geom_line(aes(x = timestamp, y = count), color = "salmon") +
   geom_point(data = res$anoms, aes(x = timestamp, y = anoms), color = "black", size = 4, shape = 1) +
-  ylab("Number of Trips") +
-  xlab("Date") +
+  ylab("Daily Number of Trips between\nFreetown and Magbema, Kambia") +
+  theme(axis.title.x=element_blank()) +
   ylim(0, max(res$plot$data$count)*1.1) +
-  ggtitle("Daily Trips between Freetown and Kambia") +
-  annotate("text", x = as.POSIXlt("2015-03-28 20:00:00"), y = max(res$plot$data$count)*1.1, label = "Lockdown", color = "darkgrey", hjust = 0.5) +
-  annotate("text", x = as.POSIXlt("2015-06-21 20:00:00"), y = max(res$plot$data$count)*1.1, label = "Operation\nNorthern Push", color = "darkgrey", hjust = 0.5) +
-  annotate("text", x = as.POSIXlt("2015-03-29 20:00:00"), y = 5, label = "Anomalies Detected", color = "black", hjust = 0)  
+  # ggtitle("Daily Trips between Freetown and Magbema, Kambia") +
+  annotate("text", x = as.POSIXlt("2015-03-28 20:00:00"), y = max(res$plot$data$count)*1.075, label = "Lockdown", color = "darkgrey", hjust = 0.5, size = 2) +
+  annotate("text", x = as.POSIXlt("2015-06-21 20:00:00"), y = max(res$plot$data$count)*1.1, label = "Operation\nNorthern Push", color = "darkgrey", hjust = 0.5, size = 2) +
+  annotate("text", x = as.POSIXlt("2015-03-29 20:00:00"), y = 5, label = "  Anomalies Detected", color = "black", hjust = 0, size = 2) +
+  theme(text = element_text(size=8))
+
+pair_example_table <- ggplot_gtable(ggplot_build(pair_example))
+pair_example_table$layout$clip[pair_example_table$layout$name == "panel"] <- "off"
+
+pdf(file= "/Users/peakcm/Documents/SLE_Mobility/Results/anomaly_detection_example.pdf", width = 4, height = 2)
+plot(pair_example_table)
+dev.off()
 
 
-# Record anomalies
+#### Count number of anomalies (min number of trips 1000) ####
 neg_anom_data <- data.frame(matrix(NA, nrow = 1, ncol = 2))
 names(neg_anom_data) <- c("day", "pair_code")
 pos_anom_data <- neg_anom_data
 
 # Set a minimum date. Repeat method where min date is after NSAHDs to see if this explains the possitive anomalies
 min_date <- "2015-03-20"
+# min_date <- "2015-03-30"
+
+for (pair in pairs_cumtrips_min1000){
+  extract <- df_ARIMA[df_ARIMA$pair == pair,c("date", "count")]
+  extract$date <- as.POSIXct(extract$date)
+  extract <- extract[extract$date >= as.POSIXct(min_date),]
+  
+  neg_res = AnomalyDetectionTs(extract, max_anoms = 0.02, direction = 'neg', plot = FALSE)
+  
+  if (length(neg_res$anoms) > 0){
+    neg_anom_data <- rbind(neg_anom_data, data.frame("day" = as.character(c(neg_res$anoms[1])$timestamp), "pair_code" = rep(pair, length(neg_res$anoms[1]))))
+  }
+  
+  pos_res = AnomalyDetectionTs(extract, max_anoms = 0.02, direction = 'pos', plot = FALSE)
+  
+  if (length(pos_res$anoms) > 0){
+    pos_anom_data <- rbind(pos_anom_data, data.frame("day" = as.character(c(pos_res$anoms[1])$timestamp), "pair_code" = rep(pair, length(pos_res$anoms[1]))))
+  }
+  cat(".")
+}
+neg_anom_data <- neg_anom_data[is.na(neg_anom_data$day)==0,]
+pos_anom_data <- pos_anom_data[is.na(pos_anom_data$day)==0,]
+
+neg_anom_data_long <- dcast(neg_anom_data, formula = day ~ . , length)
+names(neg_anom_data_long)[2] <- "count"
+neg_anom_data_long$day <- as.POSIXct(neg_anom_data_long$day)
+neg_anom_data_long$direction <- "Negative"
+
+pos_anom_data_long <- dcast(pos_anom_data, formula = day ~ . , length)
+names(pos_anom_data_long)[2] <- "count"
+pos_anom_data_long$day <- as.POSIXct(pos_anom_data_long$day)
+pos_anom_data_long$direction <- "Positive"
+
+neg_anom_data_long$count = neg_anom_data_long$count*-1
+anom_data_long <- rbind(pos_anom_data_long, neg_anom_data_long)
+anom_data_long$direction <- factor(anom_data_long$direction, levels = c("Positive", "Negative"))
+
+anomaly_count <- ggplot() +
+  theme_bw() +
+  theme(panel.border = element_blank()) +
+  theme(panel.grid.major = element_blank()) +
+  theme(panel.grid.minor = element_blank()) +
+  geom_bar(data = anom_data_long, aes(x = day, y = count, fill = direction), stat = "identity") +
+  facet_grid(direction~., space = "free", scales = "free_y") +
+  theme(strip.background = element_blank(), strip.text = element_blank()) +
+  guides(fill = FALSE) +
+  scale_fill_manual(values = c("red", "blue")) +
+  geom_text(data = data.frame(day = as.POSIXlt("2015-05-01 00:00:00"), count = -15, direction = "Negative", lab = "Text"), aes(x = day, y = count, label = "Negative Anomalies"), color = "blue", size = 2) +
+  geom_text(data = data.frame(day = as.POSIXlt("2015-05-01 00:00:00"), count = 15, direction = "Positive", lab = "Text"), aes(x = day, y = count, label = "Positive Anomalies"), color = "red", size = 2) +
+  scale_y_continuous(name = "Number of Travel Anomalies", breaks = c(-150, -100, -50, 0, 10, 50), labels = c(150, 100, 50, 0, 10, "")) +
+  theme(axis.title.x=element_blank()) +
+  theme(text = element_text(size=8))
+
+anomaly_count_table <- ggplot_gtable(ggplot_build(anomaly_count))
+anomaly_count_table$layout$clip[anomaly_count_table$layout$name == "panel"] <- "off"
+
+pdf(file= "/Users/peakcm/Documents/SLE_Mobility/Results/anomaly_count.pdf", width = 4, height = 2)
+grid.draw(anomaly_count_table)
+dev.off()
+
+#### Count number of anomalies (min number of trips 100) ####
+neg_anom_data <- data.frame(matrix(NA, nrow = 1, ncol = 2))
+names(neg_anom_data) <- c("day", "pair_code")
+pos_anom_data <- neg_anom_data
+
+# Set a minimum date. Repeat method where min date is after NSAHDs to see if this explains the possitive anomalies
+min_date <- "2015-03-20"
+# min_date <- "2015-03-30"
+
+for (pair in pairs_cumtrips_min100){
+  extract <- df_ARIMA[df_ARIMA$pair == pair,c("date", "count")]
+  extract$date <- as.POSIXct(extract$date)
+  extract <- extract[extract$date >= as.POSIXct(min_date),]
+  
+  neg_res = AnomalyDetectionTs(extract, max_anoms = 0.02, direction = 'neg', plot = FALSE)
+  
+  if (length(neg_res$anoms) > 0){
+    neg_anom_data <- rbind(neg_anom_data, data.frame("day" = as.character(c(neg_res$anoms[1])$timestamp), "pair_code" = rep(pair, length(neg_res$anoms[1]))))
+  }
+  
+  pos_res = AnomalyDetectionTs(extract, max_anoms = 0.02, direction = 'pos', plot = FALSE)
+  
+  if (length(pos_res$anoms) > 0){
+    pos_anom_data <- rbind(pos_anom_data, data.frame("day" = as.character(c(pos_res$anoms[1])$timestamp), "pair_code" = rep(pair, length(pos_res$anoms[1]))))
+  }
+  cat(".")
+}
+neg_anom_data <- neg_anom_data[is.na(neg_anom_data$day)==0,]
+pos_anom_data <- pos_anom_data[is.na(pos_anom_data$day)==0,]
+
+neg_anom_data_long <- dcast(neg_anom_data, formula = day ~ . , length)
+names(neg_anom_data_long)[2] <- "count"
+neg_anom_data_long$day <- as.POSIXct(neg_anom_data_long$day)
+neg_anom_data_long$direction <- "Negative"
+
+pos_anom_data_long <- dcast(pos_anom_data, formula = day ~ . , length)
+names(pos_anom_data_long)[2] <- "count"
+pos_anom_data_long$day <- as.POSIXct(pos_anom_data_long$day)
+pos_anom_data_long$direction <- "Positive"
+
+neg_anom_data_long$count = neg_anom_data_long$count*-1
+anom_data_long <- rbind(pos_anom_data_long, neg_anom_data_long)
+anom_data_long$direction <- factor(anom_data_long$direction, levels = c("Positive", "Negative"))
+
+anomaly_count <- ggplot() +
+  theme_bw() +
+  theme(panel.border = element_blank()) +
+  theme(panel.grid.major = element_blank()) +
+  theme(panel.grid.minor = element_blank()) +
+  geom_bar(data = anom_data_long, aes(x = day, y = count, fill = direction), stat = "identity") +
+  facet_grid(direction~., space = "free", scales = "free_y") +
+  theme(strip.background = element_blank(), strip.text = element_blank()) +
+  guides(fill = FALSE) +
+  scale_fill_manual(values = c("red", "blue")) +
+  geom_text(data = data.frame(day = as.POSIXlt("2015-05-01 00:00:00"), count = -15, direction = "Negative", lab = "Text"), aes(x = day, y = count, label = "Negative Anomalies"), color = "blue", size = 2) +
+  geom_text(data = data.frame(day = as.POSIXlt("2015-05-01 00:00:00"), count = 35, direction = "Positive", lab = "Text"), aes(x = day, y = count, label = "Positive Anomalies"), color = "red", size = 2) +
+  scale_y_continuous(name = "Number of Travel Anomalies", breaks = c(-150, -100, -50, 0, 10, 50), labels = c(150, 100, 50, 0, 10, "")) +
+  theme(axis.title.x=element_blank()) +
+  theme(text = element_text(size=8))
+
+anomaly_count_table <- ggplot_gtable(ggplot_build(anomaly_count))
+anomaly_count_table$layout$clip[anomaly_count_table$layout$name == "panel"] <- "off"
+
+pdf(file= "/Users/peakcm/Documents/SLE_Mobility/Results/anomaly_count_min100.pdf", width = 4, height = 2)
+grid.draw(anomaly_count_table)
+dev.off()
+
+#### Count number of anomalies (remove freetown) ####
+
+pairs_cumtrips_min1000_nofreetown <- pairs_cumtrips_min1000[-union(grep("4299", pairs_cumtrips_min1000), grep("4199", pairs_cumtrips_min1000))]
+
+neg_anom_data <- data.frame(matrix(NA, nrow = 1, ncol = 2))
+names(neg_anom_data) <- c("day", "pair_code")
+pos_anom_data <- neg_anom_data
+
+# Set a minimum date. Repeat method where min date is after NSAHDs to see if this explains the possitive anomalies
+min_date <- "2015-03-20"
+# min_date <- "2015-03-30"
+
+for (pair in pairs_cumtrips_min1000_nofreetown){
+  extract <- df_ARIMA[df_ARIMA$pair == pair,c("date", "count")]
+  extract$date <- as.POSIXct(extract$date)
+  extract <- extract[extract$date >= as.POSIXct(min_date),]
+  
+  neg_res = AnomalyDetectionTs(extract, max_anoms = 0.02, direction = 'neg', plot = FALSE)
+  
+  if (length(neg_res$anoms) > 0){
+    neg_anom_data <- rbind(neg_anom_data, data.frame("day" = as.character(c(neg_res$anoms[1])$timestamp), "pair_code" = rep(pair, length(neg_res$anoms[1]))))
+  }
+  
+  pos_res = AnomalyDetectionTs(extract, max_anoms = 0.02, direction = 'pos', plot = FALSE)
+  
+  if (length(pos_res$anoms) > 0){
+    pos_anom_data <- rbind(pos_anom_data, data.frame("day" = as.character(c(pos_res$anoms[1])$timestamp), "pair_code" = rep(pair, length(pos_res$anoms[1]))))
+  }
+  cat(".")
+}
+neg_anom_data <- neg_anom_data[is.na(neg_anom_data$day)==0,]
+pos_anom_data <- pos_anom_data[is.na(pos_anom_data$day)==0,]
+
+neg_anom_data_long <- dcast(neg_anom_data, formula = day ~ . , length)
+names(neg_anom_data_long)[2] <- "count"
+neg_anom_data_long$day <- as.POSIXct(neg_anom_data_long$day)
+neg_anom_data_long$direction <- "Negative"
+
+pos_anom_data_long <- dcast(pos_anom_data, formula = day ~ . , length)
+names(pos_anom_data_long)[2] <- "count"
+pos_anom_data_long$day <- as.POSIXct(pos_anom_data_long$day)
+pos_anom_data_long$direction <- "Positive"
+
+neg_anom_data_long$count = neg_anom_data_long$count*-1
+anom_data_long <- rbind(pos_anom_data_long, neg_anom_data_long)
+anom_data_long$direction <- factor(anom_data_long$direction, levels = c("Positive", "Negative"))
+
+anomaly_count <- ggplot() +
+  theme_bw() +
+  theme(panel.border = element_blank()) +
+  theme(panel.grid.major = element_blank()) +
+  theme(panel.grid.minor = element_blank()) +
+  geom_bar(data = anom_data_long, aes(x = day, y = count, fill = direction), stat = "identity") +
+  facet_grid(direction~., space = "free", scales = "free_y") +
+  theme(strip.background = element_blank(), strip.text = element_blank()) +
+  guides(fill = FALSE) +
+  scale_fill_manual(values = c("red", "blue")) +
+  geom_text(data = data.frame(day = as.POSIXlt("2015-05-01 00:00:00"), count = -15, direction = "Negative", lab = "Text"), aes(x = day, y = count, label = "Negative Anomalies"), color = "blue", size = 2) +
+  geom_text(data = data.frame(day = as.POSIXlt("2015-05-01 00:00:00"), count = 15, direction = "Positive", lab = "Text"), aes(x = day, y = count, label = "Positive Anomalies"), color = "red", size = 2) +
+  scale_y_continuous(name = "Number of Travel Anomalies", breaks = c(-150, -100, -50, 0, 10, 50), labels = c(150, 100, 50, 0, 10, "")) +
+  theme(axis.title.x=element_blank()) +
+  theme(text = element_text(size=8))
+
+anomaly_count_table <- ggplot_gtable(ggplot_build(anomaly_count))
+anomaly_count_table$layout$clip[anomaly_count_table$layout$name == "panel"] <- "off"
+
+pdf(file= "/Users/peakcm/Documents/SLE_Mobility/Results/anomaly_count_nofreetown.pdf", width = 4, height = 2)
+grid.draw(anomaly_count_table)
+dev.off()
+
+#### Count number of anomalies (beginning March 30) ####
+neg_anom_data <- data.frame(matrix(NA, nrow = 1, ncol = 2))
+names(neg_anom_data) <- c("day", "pair_code")
+pos_anom_data <- neg_anom_data
+
+# Set a minimum date. Repeat method where min date is after NSAHDs to see if this explains the possitive anomalies
+# min_date <- "2015-03-20"
 min_date <- "2015-03-30"
 
 for (pair in pairs_cumtrips_min1000){
@@ -1021,11 +1245,29 @@ names(pos_anom_data_long)[2] <- "count"
 pos_anom_data_long$day <- as.POSIXct(pos_anom_data_long$day)
 pos_anom_data_long$direction <- "Positive"
 
-anom_data_long <- rbind(neg_anom_data_long,pos_anom_data_long )
+neg_anom_data_long$count = neg_anom_data_long$count*-1
+anom_data_long <- rbind(pos_anom_data_long, neg_anom_data_long)
+anom_data_long$direction <- factor(anom_data_long$direction, levels = c("Positive", "Negative"))
 
-ggplot() +
-  theme_classic() +
-  geom_bar(data = neg_anom_data_long, aes(x = day, y = count), stat = "identity", fill = "lightblue") +
-  geom_bar(data = pos_anom_data_long, aes(x = day, y = count), stat = "identity", fill = "pink") +
+anomaly_count <- ggplot() +
+  theme_bw() +
+  theme(panel.border = element_blank()) +
+  theme(panel.grid.major = element_blank()) +
+  theme(panel.grid.minor = element_blank()) +
+  geom_bar(data = anom_data_long, aes(x = day, y = count, fill = direction), stat = "identity") +
   facet_grid(direction~., space = "free", scales = "free_y") +
-  ggtitle("Anomalies Detected")
+  theme(strip.background = element_blank(), strip.text = element_blank()) +
+  guides(fill = FALSE) +
+  scale_fill_manual(values = c("red", "blue")) +
+  geom_text(data = data.frame(day = as.POSIXlt("2015-05-01 00:00:00"), count = -10, direction = "Negative", lab = "Text"), aes(x = day, y = count, label = "Negative Anomalies"), color = "blue", size = 2) +
+  geom_text(data = data.frame(day = as.POSIXlt("2015-05-01 00:00:00"), count = 10, direction = "Positive", lab = "Text"), aes(x = day, y = count, label = "Positive Anomalies"), color = "red", size = 2) +
+  scale_y_continuous(name = "Number of Travel Anomalies", breaks = c(-20, -10, 0, 10, 20), labels = c("", 10, 0, 10, "")) +
+  theme(axis.title.x=element_blank()) +
+  theme(text = element_text(size=8))
+
+anomaly_count_table <- ggplot_gtable(ggplot_build(anomaly_count))
+anomaly_count_table$layout$clip[anomaly_count_table$layout$name == "panel"] <- "off"
+
+pdf(file= "/Users/peakcm/Documents/SLE_Mobility/Results/anomaly_count_march30onwards.pdf", width = 4, height = 2)
+grid.draw(anomaly_count_table)
+dev.off()
