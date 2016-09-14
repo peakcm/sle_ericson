@@ -41,23 +41,25 @@ data_interventions <- data.frame(matrix(nrow = 1, ncol = 5))
 names(data_interventions) <- c("Range", "District", "Type", "Date_Start", "Date_End")
 data_interventions[1,] <- c("National", "All", "National_Lock_Down", "2014-09-19", "2014-09-21")
 data_interventions[2,] <- c("National", "All", "National_Lock_Down", "2015-03-27", "2015-03-29")
-data_interventions[3,] <- c("National", "All", "National_Lock_Down", "2015-04-04", "2015-04-05")
-data_interventions[4,] <- c("National", "All", "National_Lock_Down", "2015-04-11", "2015-04-12")
-data_interventions[5,] <- c("National", "All", "National_Lock_Down", "2015-04-18", "2015-04-19")
 
-data_interventions[6,] <- c("District", "KENEMA", "Quarantine", "2014-08-07", "2015-01-23")
-data_interventions[7,] <- c("District", "KAILAHUN", "Quarantine", "2014-08-07", "2015-01-23")
+data_interventions[3,] <- c("District", "KENEMA", "Quarantine", "2014-08-07", "2015-01-23")
+data_interventions[4,] <- c("District", "KAILAHUN", "Quarantine", "2014-08-07", "2015-01-23")
 
-data_interventions[8,] <- c("District", "PORT LOKO", "Quarantine", "2014-09-25", "2015-01-23")
-data_interventions[9,] <- c("District", "BOMBALI", "Quarantine", "2014-09-25", "2015-01-23")
-data_interventions[10,] <- c("District", "MOYAMBA", "Quarantine", "2014-09-25", "2015-01-23")
+data_interventions[5,] <- c("District", "PORT LOKO", "Quarantine", "2014-09-25", "2015-01-23")
+data_interventions[6,] <- c("District", "BOMBALI", "Quarantine", "2014-09-25", "2015-01-23")
+data_interventions[7,] <- c("District", "MOYAMBA", "Quarantine", "2014-09-25", "2015-01-23")
 
-data_interventions[11,] <- c("District", "PORT LOKO", "Quarantine", "2015-06-25", "2015-08-17") #Unsure of end date
-data_interventions[12,] <- c("District", "KAMBIA", "Quarantine", "2015-06-25", "2015-08-17") #Unsure of end date
-data_interventions[13,] <- c("District", "KONO", "Quarantine", "2014-12-10", "2014-10-23")
-data_interventions[14,] <- c("District", "TONKOLILI", "Quarantine", "2014-12-03", "2015-01-18")
+data_interventions[8,] <- c("District", "PORT LOKO", "Quarantine", "2015-06-25", "2015-08-17") #Unsure of end date
+data_interventions[9,] <- c("District", "KAMBIA", "Quarantine", "2015-06-25", "2015-08-17") #Unsure of end date
+data_interventions[10,] <- c("District", "KONO", "Quarantine", "2014-12-10", "2014-10-23")
+data_interventions[11,] <- c("District", "TONKOLILI", "Quarantine", "2014-12-03", "2015-01-18")
 
-data_interventions[15,] <- c("District", "KOINADUGU", "Quarantine", "2014-08-04", "2014-11-12")
+data_interventions[12,] <- c("District", "KOINADUGU", "Quarantine", "2014-08-04", "2014-11-12")
+
+# 
+# data_interventions[13,] <- c("National", "All", "National_Lock_Down", "2015-04-04", "2015-04-05")
+# data_interventions[14,] <- c("National", "All", "National_Lock_Down", "2015-04-11", "2015-04-12")
+# data_interventions[15,] <- c("National", "All", "National_Lock_Down", "2015-04-18", "2015-04-19")
 
 
 rows <- nrow(data_interventions)
@@ -74,25 +76,16 @@ data_interventions$Date_End <- as.Date(data_interventions$Date_End, origin = ori
 
 data_interventions <- data_interventions[data_interventions$District != "All",]
 
-# Add indicator for CDR data range
+#### Indicator for CDR data range ####
 data_CDR <- data.frame(matrix(nrow = 1, ncol = 3))
 names(data_CDR) <- c("Set", "Date_Start", "Date_End")
 
-data_CDR[1,] <- c(1, "2014-06-01", "2014-06-01")
-data_CDR <- rbind(data_CDR, c(1, "2014-06-03", "2014-06-05"))
-data_CDR <- rbind(data_CDR, c(1, "2014-06-13", "2014-06-16"))
-data_CDR <- rbind(data_CDR, c(1, "2014-06-19", "2014-06-25"))
-data_CDR <- rbind(data_CDR, c(1, "2014-07-01", "2014-07-31"))
-data_CDR <- rbind(data_CDR, c(1, "2014-08-14", "2014-10-25"))
-data_CDR <- rbind(data_CDR, c(1, "2014-10-27", "2014-10-28"))
-data_CDR <- rbind(data_CDR, c(1, "2014-10-29", "2014-12-31"))
-data_CDR <- rbind(data_CDR, c(1, "2015-01-02", "2015-01-16"))
-data_CDR <- rbind(data_CDR, c(2, "2015-03-02", "2015-06-30"))
+data_CDR[1,] <- c(1, "2015-03-20", "2015-07-01")
 
 data_CDR$Date_Start <- as.Date(data_CDR$Date_Start, origin = origin)
 data_CDR$Date_End <- as.Date(data_CDR$Date_End, origin = origin)
 
-#### Plot ####
+#### Facet Plot for all Districts ####
 ggplot(data_ebola.m[data_ebola.m$Confirmation == "Confirmed" &
                       data_ebola.m$Source == "Patient database" &
                       is.na(data_ebola.m$value)==0,],
@@ -108,6 +101,7 @@ ggplot(data_ebola.m[data_ebola.m$Confirmation == "Confirmed" &
   scale_x_continuous(breaks = as.numeric(as.Date(c("2014-06-01", "2014-08-01", "2014-10-01", "2014-12-01", "2015-02-01", "2015-04-01", "2015-06-01", "2015-08-01"), origin = origin)), labels = as.character(as.Date(c("2014-06-01", "2014-08-01", "2014-10-01", "2014-12-01", "2015-02-01", "2015-04-01", "2015-06-01", "2015-08-01"), origin = origin))) +
   facet_grid(District~.)
 
+#### Plot for Port Loko ####
 focus_district <- "PORT LOKO"
 ggplot(data_ebola.m[data_ebola.m$Confirmation == "Confirmed" &
                       data_ebola.m$Source == "Patient database" &
@@ -127,6 +121,33 @@ ggplot(data_ebola.m[data_ebola.m$Confirmation == "Confirmed" &
   annotate("text", x = as.numeric(as.Date("2015-7-15", origin = origin)), y = 185, label = "Mobile Phone Data", color = "forestgreen", alpha = 0.8) +
   annotate("text", x = as.numeric(as.Date("2015-7-15", origin = origin)), y = 165, label = "National Stay-at-Home Days", color = "red", alpha = 0.8) +
   annotate("text", x = as.numeric(as.Date("2015-7-15", origin = origin)), y = 145, label = "District Quarantine", color = "blue", alpha = 0.8)
+
+#### Plot for all SL ####
+case_plot <- ggplot(data_ebola.m[data_ebola.m$Confirmation == "Confirmed" &
+                      data_ebola.m$Source == "Patient database" &
+                      is.na(data_ebola.m$value)==0,],
+       aes(x = as.numeric(variable), y = value)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank()) +
+  theme(panel.grid.minor = element_blank()) +
+    theme(panel.border = element_blank()) +
+  geom_segment(data = data_CDR, aes(x = as.numeric(Date_Start), xend = as.numeric(Date_End), y = 650, yend = 650), color = "forestgreen", size = 2, alpha = 0.5) +
+    geom_segment(data = data_interventions[data_interventions$Range == "National",], aes(x = as.numeric(Date_Start), xend = as.numeric(Date_End), y = 610, yend = 610), color = "red", size = 2, alpha = 0.5) +
+  geom_segment(aes(x = as.numeric(as.Date("2015-06-15", origin = origin)), xend = as.numeric(as.Date("2015-08-31", origin = origin)), y = 570, yend = 570), color = "blue", size = 2, alpha = 0.5) +
+  ylab("Weekly Confirmed Cases") +
+  theme(axis.title.x = element_blank()) +
+  scale_x_continuous(breaks = as.numeric(as.Date(c("2014-05-01", "2014-07-01", "2014-9-01", "2014-11-01", "2015-01-01", "2015-03-01", "2015-05-01", "2015-07-01", "2015-09-01"), origin = origin)), labels = c("May\n2014", "Jul", "Sep", "Nov", "Jan\n2015", "Mar", "May", "Jul", "Sep")) +
+  annotate("text", x = as.numeric(as.Date("2015-01-20", origin = origin)), y = 650, label = "Mobile Phone Data", color = "forestgreen", alpha = 0.8, size = 2) +
+  annotate("text", x = as.numeric(as.Date("2014-12-25", origin = origin)), y = 610, label = "National Lockdowns", color = "red", alpha = 0.8, size = 2) +
+  annotate("text", x = as.numeric(as.Date("2015-03-30", origin = origin)), y = 570, label = "Operation Northern Push", color = "blue", alpha = 0.8, size = 2) +
+  theme(text = element_text(size=8))
+
+pdf(file= "/Users/peakcm/Documents/SLE_Mobility/Results/case_plot.pdf", width = 4, height = 2)
+plot(case_plot)
+dev.off()
+
 
 #### Read Chiefdom data ####
 
