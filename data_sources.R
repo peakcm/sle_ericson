@@ -148,7 +148,6 @@ pdf(file= "/Users/peakcm/Documents/SLE_Mobility/Results/case_plot.pdf", width = 
 plot(case_plot)
 dev.off()
 
-
 #### Read Chiefdom data ####
 
 #### Read PNAS incidence data ####
