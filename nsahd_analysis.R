@@ -7,6 +7,7 @@
 library(fastmatch)
 library(data.table)
 library(magrittr)
+library(sp)
 
 #### Load .csv data ####
 # Load data from the "nsahd_crossover_windows.py" processing code
@@ -37,6 +38,14 @@ row.names(towers_dist) <- towers_dist[,1]
 towers_dist <- towers_dist[,2:ncol(towers_dist)]
 names(towers_dist) <- row.names(towers_dist)
 View(towers_dist)
+
+# Import data on tower geolocations
+towers_loc <- read.csv("/Users/peakcm/Documents/SLE_Mobility/data/Tower_Locations.csv")
+
+tab <- table(towers_loc$CellID)
+towers_with_multiple_appearances <- names(which(tab>1))
+subset <- towers_loc[towers_loc$CellID %in% towers_with_multiple_appearances,]
+View(subset[order(subset$CellID),]) # 28 CellIDs, representing 10 tower groups, have locatiosn on the 2g network and on the 3g network. Distance calculations will hense assume the nearest tower was used
 
 #### Reformat .csv data ####
 # Describe data
@@ -94,7 +103,7 @@ data <- data_trim
 
 #### For towers with multiple listings to essentially the same location ####
 towers_located_repeats_not_concerning # Defined below
-to_drop <- c("11b","12b", "13b", "31b", "32b", "33b", "151b", "152b", "153b", "397b", "3661b", "3662b", "3663b", "3678b", "3678c")
+to_drop <- c("11b","12b", "13b", "31b", "32b", "33b", "151b", "152b", "153b", "397b", "3661b", "3662b", "3663b", "3678b", "3678c") # These towers are listed multiple times, but their location is the same.
 towers_dist <- towers_dist[(row.names(towers_dist) %in% to_drop)==0, (names(towers_dist) %in% to_drop)==0 ]
 # Note the order below. it was done manually and must match names()
 to_rename <- c("3661a","3662a", "3663a", "11a", "12a", "13a", "31a", "32a", "33a", "151a", "152a", "153a", "3678a", "397a")
@@ -105,8 +114,21 @@ row.names(towers_dist)[which(row.names(towers_dist) %in% to_rename)] == to_renam
 row.names(towers_dist)[which(row.names(towers_dist) %in% to_rename)] <- c("3661","3662", "3663", "11", "12", "13", "31", "32", "33", "151", "152", "153", "3678", "397")
 row.names(towers_dist)[which(row.names(towers_dist) %in% c("3661","3662", "3663", "11", "12", "13", "31", "32", "33", "151", "152", "153", "3678", "397"))]
 
+#### Remove towers that are multiply listed, but in the same location, from towers_loc ####
+for (tower in towers_located_repeats_not_concerning){
+  rows = 999
+  rows <- which(towers_loc$CellID %in% tower)
+  if (length(rows) >= 2){
+    towers_loc[rows[2],] <- NA
+  }
+  if (length(rows) == 3){
+    towers_loc[rows[3],] <- NA
+  }
+}
+towers_loc <- towers_loc[is.na(towers_loc$CellID)==0,]
+
 #### or: Load previously processed data from R workspace ####
-load("/home/coreypeak/processed_data/2015/NSAHD_Analysis_c1-2_e2.RData")
+load("/Users/peakcm/Documents/SLE_Mobility/NSAHD_Analysis_c1-2_e2.RData")
 
 #### Create new dataset with the format: user_id, freq, cell_ids ####
 data_trim <- data_trim[order(data_trim$user_id, data_trim$time),] #sort by user_id, then time
@@ -163,10 +185,9 @@ towers_dist_corrected[c("3791", "3792", "3793"),c("3651", "3652", "3653")]
 sum(towers_dist_corrected[c("3791", "3792", "3793"),] != towers_dist_corrected[c("3651", "3652", "3653"),])
 sum(towers_dist_corrected[,c("3791", "3792", "3793")] != towers_dist_corrected[,c("3651", "3652", "3653")])
 
-#### Calculate tower distances and stationarity ####
-
-# Functions to calculate distance traveled. This, or fcn_distance_pairs is currently a slow function
-fcn_distance <- function(input_list, towers, threshold = 0){
+#### Functions to Calculate travel distances ####
+# Functions to calculate distance traveled. This, or fcn_distance_pairs, is currently a slow function
+fcn_distance <- function(input_list, towers, threshold = 0, distance_function = "sum_intertower_distance", tower_geolocations = towers_loc){
   # cat(class(input_list))
   vector <- unlist(input_list)
   # cat(class(vector))
@@ -174,7 +195,13 @@ fcn_distance <- function(input_list, towers, threshold = 0){
     distance <- 0
   } else {
     # cat(length(vector))
-    distance <- sum(sapply(2:length(vector), function(x) fcn_distance_pairs(vector[x], vector[x-1], towers, threshold)))
+    if (distance_function == "sum_intertower_distance"){
+      distance <- sum(sapply(2:length(vector), function(x) fcn_distance_pairs(vector[x], vector[x-1], towers, threshold)))
+    } else if (distance_function == "max_intertower_distance"){
+      distance <- max(sapply(2:length(vector), function(x) fcn_distance_pairs(vector[x], vector[x-1], towers, threshold)))
+    } else if (distance_function == "convex_hull"){
+      distance <- fcn_convex_hull(vector, tower_geolocations)
+    }
   }
   return(distance)
 }
@@ -207,7 +234,7 @@ fcn_distance_pairs <- function(x1, x2, towers, threshold = 0){
   } else if (length(tower_1) == 1 & length(tower_2_rows) > 0){  # If we ahve a single location for only tower 1
     out <- min(towers[tower_2_rows, as.character(x1)])
   } else if (length(tower_1_rows) > 0 & length(tower_2_rows) > 0){  # If we have more than one location for each tower 1 and 2
-    out <- min(towers[tower_1_rows, tower_2_rows])
+    out <- min(towers[tower_1_rows, tower_2_rows]) # Select the minimum distance between towers when multiple locations exist
   }
   
   if (threshold != 0 & out < threshold){out <- 0}
@@ -215,12 +242,30 @@ fcn_distance_pairs <- function(x1, x2, towers, threshold = 0){
   return(out)
 }
 
-# Calculate distance traveled
+fcn_convex_hull <- function(tower_vector, tower_geolocations){
+  coords <- matrix(nrow = (length(tower_vector)+1), ncol = 2)
+  for (i in 1:length(tower_vector)){
+    coords[i,] <- as.numeric(tower_geolocations[tower_geolocations$CellID %in% tower_vector[i], c("Long", "Lat")])
+  }
+  coords <- coords[is.na(coords[,1])==0,] # Drop missing locations
+  
+  if (class(coords) == "matrix"){
+    
+    hpts <- chull(x = coords[,1], y = coords[,2])
+    hpts <- c(hpts, hpts[1]) # Need to repeat the first location to close the polygon
+    chull.coords <- coords[hpts,]
+    # Calculate convex hull area
+    chull.poly <- Polygon(chull.coords, hole=F)
+    return(chull.poly@area*110^2) # Output is in square kilometers. Multiply by 110^2 to convert into square kilometers. I did this by calculating the area contained by four towers and comparing this to google earth calculations for those towers. Because we're close to the equator and the country is small, there is little warping.
+  } else {return(0)}
+}
+
+#### Calculate total inter-tower distance traveled ####
 head(data_users_DT)
 n = nrow(data_users_DT)
 # n = 1000
 data_users_DT$distance <- 999 # This missing indicator is needed in order to keep this field numeric
-data_users_DT$distance[1:n] <- as.numeric(sapply(data_users_DT$cell_ids[1:n], function(x) fcn_distance(x, towers_dist))) # This step is slow (~1hr)
+data_users_DT$distance[1:n] <- as.numeric(sapply(data_users_DT$cell_ids[1:n], function(x) fcn_distance(x, towers_dist))) # This step is slow (~1hr) for full window
 data_users_DT[data_users_DT$distance == 999,]$distance <- NA # replace missing indicator with NA
 
 data_users_DT$distance_thresh_3 <- 999 # missing indicator, needed to keep this vector numeric
@@ -235,7 +280,17 @@ data_users_DT[data_users_DT$distance_thresh_10 == 999,]$distance_thresh_10 <- NA
 # data_users_DT$distance_corrected[1:n] <- as.numeric(sapply(data_users_DT$cell_ids[1:n], function(x) fcn_distance(x, towers_dist_corrected))) # This step is slow
 # data_users_DT[data_users_DT$distance_corrected == 999,]$distance_corrected <- NA # replace missing indicator with NA
 
-# Calculate stationarity
+#### Calculate convex hull distance traveled ####
+head(data_users_DT)
+n = nrow(data_users_DT)
+# n = 20000
+data_users_DT$distance_ch <- 999 # This missing indicator is needed in order to keep this field numeric
+data_users_DT$distance_ch[1:n] <- as.numeric(sapply(data_users_DT$cell_ids[1:n], function(x) fcn_distance(x, towers_dist, distance_function = "convex_hull"))) # This step is slow (~1hr) for full window
+data_users_DT[data_users_DT$distance_ch == 999,]$distance_ch <- NA # replace missing indicator with NA
+summary(data_users_DT$distance_ch)
+plot(log(data_users_DT$distance), log(data_users_DT$distance_ch))
+
+#### Calculate stationarity ####
 data_users_DT$stationary_same_tower <- NA #Calcualte those who use the same tower again.
 # data_users_DT[length(unique(unlist(data_users_DT$cell_ids)))]$stationary_same_tower <- TRUE
 # data_users_DT[data_users_DT$distance != 0,]$stationary_same_tower <- FALSE
@@ -450,8 +505,8 @@ cat("There are", nrow(data), "calls/texts during the window")
 hist(log10(data_users_DT$freq), breaks = 100, main = "Histogram of number of calls per user (log10)")
 
 # Plot of calls placed by the hour
-plot(hours, calls)
-plot(hours_of_day, calls)
+plot(hours, calls, type = 'b')
+plot(hours_of_day, calls, type = 'b')
 
 # Number of users who placed at least 1 call
 cat("There were", nrow(data_users_DT), "unique users in window, placing an average of", round(nrow(data)/nrow(data_users_DT),2), "calls/texts")
@@ -464,6 +519,8 @@ cat("And", nrow(data_users_DT[data_users_DT$freq > 1000,]), "of these users plac
 hist(log10(data_users_DT[data_users_DT$freq > 1,]$distance), main = "Histogram of Log10 distance traveled", xlab = "Log10 Distance (km)", xlim = c(-5, 5))
 hist(log10(data_users_DT[data_users_DT$freq > 1,]$distance_thresh_3), main = "Histogram of Log10 distance traveled (3km threshold)", xlab = "Log10 Distance (km)",  xlim = c(-5, 5))
 hist(log10(data_users_DT[data_users_DT$freq > 1,]$distance_thresh_10), main = "Histogram of Log10 distance traveled (10km threshold)", xlab = "Log10 Distance (km) (3km threshold)",  xlim = c(-5, 5))
+
+hist(log10(data_users_DT[data_users_DT$freq > 1,]$distance_ch), main = "Histogram of convex-hull distance traveled", xlab = "Convex Hull Distance")
 
 # Fraction of users for whom all calls were managed by the same tower
 min_calls = 2
@@ -488,12 +545,15 @@ fcn_fraction_stationary <- function(df, min_calls){
   d10 <- summary(df[df$freq >= min_calls,]$distance_thresh_10)["Mean"]
   e10 <- summary(df[df$freq >= min_calls,]$distance_thresh_10)["Median"]
   
+  f0 <- mean(df[df$freq >= min_calls,]$distance_ch)
+  g0 <- median(df[df$freq >= min_calls,]$distance_ch)
+  
   thresholds = 3
-  output <- data.frame(matrix(nrow = thresholds, ncol = 6))
-  names(output) <- c("threshold_distance","n_stationary", "n_mobile", "frac_stationary", "mean_distance", "median_distance")
-  output[1,] <- c(0, a0, b0, c0, d0, e0)
-  output[2,] <- c(3, a3, b3, c3, d3, e3)
-  output[3,] <- c(10, a10, b10, c10, d10, e10)
+  output <- data.frame(matrix(nrow = thresholds, ncol = 8))
+  names(output) <- c("threshold_distance","n_stationary", "n_mobile", "frac_stationary", "mean_distance", "median_distance", "mean_convex_hull_distance_km", "median_convex_hull_distance_km")
+  output[1,] <- c(0, a0, b0, c0, d0, e0, f0, g0)
+  output[2,] <- c(3, a3, b3, c3, d3, e3, NA, NA)
+  output[3,] <- c(10, a10, b10, c10, d10, e10, NA, NA)
   
   return(output)
 }
