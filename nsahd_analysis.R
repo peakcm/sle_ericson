@@ -463,8 +463,7 @@ fcn_distance_pairs(3791,881, towers_dist)
   #3791 is right in the middle. Set locations of 3651-3 to 3791-3
 # Conclusion: Set all tower distances from location 3651 to essentially be from 3791, etc.
 
-#### Explore results ####
-# Towers used
+#### Characterize the Towers used ####
 towers_used <- as.character(unique(data$cell_id))
 length(towers_used)
 hist <- hist(as.numeric(data$cell_id), breaks = 600)
@@ -500,6 +499,7 @@ sort((towers_located[which((towers_located %in% towers_used)==0)]))
 # Towers located but not used: 18, 107, 108, 109, 217, 218, 219, 338, 358, 377, 378, 379, 488, 2191, 2193, 2321, 2322, 2323, 3673
 sort((towers_located[which((towers_located %in% towers_used)==0)]))
 
+#### Results ####
 # Number of calls placed during window
 cat("There are", nrow(data), "calls/texts during the window")
 hist(log10(data_users_DT$freq), breaks = 100, main = "Histogram of number of calls per user (log10)")
@@ -520,8 +520,9 @@ hist(log10(data_users_DT[data_users_DT$freq > 1,]$distance), main = "Histogram o
 hist(log10(data_users_DT[data_users_DT$freq > 1,]$distance_thresh_3), main = "Histogram of Log10 distance traveled (3km threshold)", xlab = "Log10 Distance (km)",  xlim = c(-5, 5))
 hist(log10(data_users_DT[data_users_DT$freq > 1,]$distance_thresh_10), main = "Histogram of Log10 distance traveled (10km threshold)", xlab = "Log10 Distance (km) (3km threshold)",  xlim = c(-5, 5))
 
-hist(log10(data_users_DT[data_users_DT$freq > 1,]$distance_ch), main = "Histogram of convex-hull distance traveled", xlab = "Convex Hull Distance")
+hist(log10(data_users_DT[data_users_DT$freq > 1,]$distance_ch), main = "Histogram of convex-hull distance traveled", xlab = "Log Convex Hull Distance")
 
+#### Summary of stationarity and distance metrics ####
 # Fraction of users for whom all calls were managed by the same tower
 min_calls = 2
 
@@ -563,8 +564,11 @@ fcn_fraction_stationary(data_users_DT, min_calls = 2)
 # Sensitivity analysis: Does the minimum number of calls influence results?
 fcn_fraction_stationary(data_users_DT, min_calls = 3)
 fcn_fraction_stationary(data_users_DT, min_calls = 4)
+fcn_fraction_stationary(data_users_DT, min_calls = 5)
+fcn_fraction_stationary(data_users_DT, min_calls = 10)
 
-# Sensitivity analysis: Downsample number of calls during control periods to match exposure period
+
+#### Sensitivity analysis: Downsample number of calls during control periods ####
 fcn_sens_downsample_calls <- function(df, downsample_frac){
   df$cell_ids_downsample <- df$cell_ids
   
@@ -610,12 +614,12 @@ fcn_sens_downsample_calls <- function(df, downsample_frac){
 
 # If we set downsample_frac = 1, this should give the same output as 
 # fcn_fraction_stationary(data_users_DT, min_calls = 2)
-# downsample_frac_mch20_22 <- 5622017/7259921
-# downsample_frac_apr03_05 <- 5622017/7663672
-# 
-# data_users_DT %>%
-#   fcn_sens_downsample_calls(downsample_frac = downsample_frac_apr03_05) %>%
-#   fcn_fraction_stationary(min_calls = 2, downsample = TRUE)
+downsample_frac_mch20_22 <- 5622017/8671124
+downsample_frac_apr03_05 <- 5622017/7663672
+
+data_users_DT %>%
+  fcn_sens_downsample_calls(downsample_frac = downsample_frac_apr03_05) %>%
+  fcn_fraction_stationary(min_calls = 2)
 
 # Test differences in fraction stationary
 fisher.test(matrix(c(447796, 32673, 439959, 92308), ncol=2)) # c(stationary in E, mobile in E, stationary in c1, mobile in c1)
