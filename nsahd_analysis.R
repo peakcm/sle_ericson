@@ -1,9 +1,6 @@
 #### National Stay at Home Days analysis ####
-
-# install.packages("plyr")
-# require(plyr)
-# install.packages("ggplot2")
-# library(ggplot2)
+# library(plyr)
+library(ggplot2)
 library(fastmatch)
 library(data.table)
 library(magrittr)
@@ -46,6 +43,13 @@ tab <- table(towers_loc$CellID)
 towers_with_multiple_appearances <- names(which(tab>1))
 subset <- towers_loc[towers_loc$CellID %in% towers_with_multiple_appearances,]
 View(subset[order(subset$CellID),]) # 28 CellIDs, representing 10 tower groups, have locatiosn on the 2g network and on the 3g network. Distance calculations will hense assume the nearest tower was used
+
+# Add tower 399 to be the same as tower 398
+towers_loc <- rbind(towers_loc, towers_loc[towers_loc$CellID == 398,])
+towers_loc[nrow(towers_loc), "CellID"] <- 399
+
+# Load estimated chiefdom population sizes
+pop <- read.csv("/Users/peakcm/Dropbox/Ebola/Spatial Analysis SL PNAS/PNAS_Population.csv")
 
 #### Reformat .csv data ####
 # Describe data
@@ -283,7 +287,7 @@ data_users_DT[data_users_DT$distance_thresh_10 == 999,]$distance_thresh_10 <- NA
 #### Calculate convex hull distance traveled ####
 head(data_users_DT)
 n = nrow(data_users_DT)
-# n = 20000
+# n = 10000
 data_users_DT$distance_ch <- 999 # This missing indicator is needed in order to keep this field numeric
 data_users_DT$distance_ch[1:n] <- as.numeric(sapply(data_users_DT$cell_ids[1:n], function(x) fcn_distance(x, towers_dist, distance_function = "convex_hull"))) # This step is slow (~1hr) for full window
 data_users_DT[data_users_DT$distance_ch == 999,]$distance_ch <- NA # replace missing indicator with NA
@@ -567,7 +571,6 @@ fcn_fraction_stationary(data_users_DT, min_calls = 4)
 fcn_fraction_stationary(data_users_DT, min_calls = 5)
 fcn_fraction_stationary(data_users_DT, min_calls = 10)
 
-
 #### Sensitivity analysis: Downsample number of calls during control periods ####
 fcn_sens_downsample_calls <- function(df, downsample_frac){
   df$cell_ids_downsample <- df$cell_ids
@@ -614,16 +617,16 @@ fcn_sens_downsample_calls <- function(df, downsample_frac){
 
 # If we set downsample_frac = 1, this should give the same output as 
 # fcn_fraction_stationary(data_users_DT, min_calls = 2)
-downsample_frac_mch20_22 <- 5622017/8671124
-downsample_frac_apr03_05 <- 5622017/7663672
+downsample_frac_mch20_22 <- 5343388/6882636
+downsample_frac_apr03_05 <- 5343388/7221813
 
 data_users_DT %>%
-  fcn_sens_downsample_calls(downsample_frac = downsample_frac_apr03_05) %>%
+  fcn_sens_downsample_calls(downsample_frac = downsample_frac_mch20_22) %>%
   fcn_fraction_stationary(min_calls = 2)
 
 # Test differences in fraction stationary
 fisher.test(matrix(c(447796, 32673, 439959, 92308), ncol=2)) # c(stationary in E, mobile in E, stationary in c1, mobile in c1)
-fisher.test(matrix(c(18488, 27402, 8930, 23260), ncol=2)) # c(stationary in E, mobile in E, stationary in c2, mobile in c2)
+fisher.test(matrix(c(447796, 32673, 454543, 90025), ncol=2)) # c(stationary in E, mobile in E, stationary in c2, mobile in c2)
 
 fisher.test(matrix(c(13663, 37247, 14084, 23260), ncol=2)) # c(stationary in c1, mobile in c1, stationary in c2, mobile in c2)
 
@@ -675,4 +678,362 @@ out <- fcn_list_cell_ids_visited(test, "M/IvAFAeBGZVqx8mQvnXB7TqXoSWwJr0RIByaqfI
 class(out)
 
 #### Save workspace ####
-# save.image("~/processed_data/2015/NSAHD_Analysis_c1-2_e2.RData")
+# save.image("/Users/peakcm/Documents/SLE_Mobility/NSAHD_Analysis_c1-2_e2.RData")
+
+#### Paired analysis of indidividuals across windows ####
+data_trim_users_DT_mch20_22$user_id <- as.character(data_trim_users_DT_mch20_22$user_id)
+data_trim_users_DT_mch27_29$user_id <- as.character(data_trim_users_DT_mch27_29$user_id)
+data_trim_users_DT_apr03_05$user_id <- as.character(data_trim_users_DT_apr03_05$user_id)
+
+data_users_DT_paired <- data_trim_users_DT_mch20_22
+
+c1_columns <- c("user_id", "freq_c1", "cell_ids_c1", "distance_c1", "distance_thresh_3_c1", "distance_thresh_10_c1", "stationary_thresh_0_c1", "stationary_thresh_3_c1", "stationary_thresh_10_c1", "distance_ch_c1")
+e1_columns <- c("user_id_e1", "freq_e1", "cell_ids_e1", "distance_e1", "distance_thresh_3_e1", "distance_thresh_10_e1", "stationary_same_tower_e1", "stationary_thresh_0_e1", "stationary_thresh_3_e1", "stationary_thresh_10_e1", "distance_ch_e1")
+c2_columns <- c("user_id_c2", "freq_c2", "cell_ids_c2", "distance_c2", "distance_thresh_3_c2", "distance_thresh_10_c2", "stationary_same_tower_c2", "stationary_thresh_0_c2", "stationary_thresh_3_c2", "stationary_thresh_10_c2", "distance_ch_c2")
+
+names(data_users_DT_paired) <- c1_columns
+data_users_DT_paired[,e1_columns] <- NA
+data_users_DT_paired[,c2_columns] <- NA
+
+# Add E1 data to _paired
+e1_ids_in_c1 <- which(as.character(data_trim_users_DT_mch27_29$user_id) %in% as.character(data_trim_users_DT_mch20_22$user_id))
+c1_ids_in_e1 <- which(as.character(data_trim_users_DT_mch20_22$user_id) %in% as.character(data_trim_users_DT_mch27_29$user_id))
+
+data_users_DT_paired[c1_ids_in_e1, e1_columns] <- data_trim_users_DT_mch27_29[e1_ids_in_c1,] # If ID in E1 is already in C1
+data_users_DT_paired[(nrow(data_trim_users_DT_mch20_22)+nrow(data_trim_users_DT_mch27_29[-e1_ids_in_c1,])),] <- NA # If ID in E1 is not in C1
+data_users_DT_paired[(nrow(data_trim_users_DT_mch20_22)+1):(nrow(data_trim_users_DT_mch20_22)+nrow(data_trim_users_DT_mch27_29[-e1_ids_in_c1,])),e1_columns] <- data_trim_users_DT_mch27_29[-e1_ids_in_c1,]
+
+# Add C2 data to _paired
+c2_ids_in_paired <- which(as.character(data_trim_users_DT_apr03_05$user_id) %in% as.character(data_users_DT_paired$user_id))
+paired_ids_in_c2 <- which(as.character(data_users_DT_paired$user_id) %in% as.character(data_trim_users_DT_apr03_05$user_id))
+
+data_users_DT_paired[paired_ids_in_c2, c2_columns] <- data_trim_users_DT_apr03_05[c2_ids_in_paired,] # If ID in C2 is already in Paired
+rows <- nrow(data_users_DT_paired)
+data_users_DT_paired[(rows+nrow(data_trim_users_DT_apr03_05[-c2_ids_in_paired,])),] <- NA # If ID in C2 is not in paired
+data_users_DT_paired[(rows+1):(rows+nrow(data_trim_users_DT_apr03_05[-c2_ids_in_paired,])),c2_columns] <- data_trim_users_DT_apr03_05[-c2_ids_in_paired,]
+
+#### McNemar's test of paired proportions: C1 vs E1 ####
+
+# Number of people who were statnionary in c1 and e1
+a1 <- nrow(data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_e1)==0 & data_users_DT_paired$stationary_thresh_10_c1==TRUE & data_users_DT_paired$stationary_thresh_10_e1==TRUE,]) 
+
+# Number of subscribers stationary in c1 but not e1
+b1 <- nrow(data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_e1)==0 & data_users_DT_paired$stationary_thresh_10_c1==TRUE & data_users_DT_paired$stationary_thresh_10_e1==FALSE,]) 
+
+# Number of subscribers stationary in e1 but not c1
+c1 <- nrow(data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_e1)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE & data_users_DT_paired$stationary_thresh_10_e1==TRUE,]) 
+
+# Number of subscribers stattionary in neither c1 nor e1
+d1 <- nrow(data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_e1)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE & data_users_DT_paired$stationary_thresh_10_e1==FALSE,]) 
+
+text_matrix_c1 <- matrix(c(a1,b1,c1,d1),2,2, byrow = TRUE)
+mcnemar.test(text_matrix_c1)
+b1/c1
+
+#### McNemar's test of paired proportions: C2 vs E1 ####
+
+# Number of people who were statnionary in c2 and e1
+a2 <- nrow(data_users_DT_paired[is.na(data_users_DT_paired$user_id_c2)==0 & is.na(data_users_DT_paired$user_id_e1)==0 & data_users_DT_paired$stationary_thresh_10_c2==TRUE & data_users_DT_paired$stationary_thresh_10_e1==TRUE,]) 
+
+# Number of subscribers stationary in c2 but not e1
+b2 <- nrow(data_users_DT_paired[is.na(data_users_DT_paired$user_id_c2)==0 & is.na(data_users_DT_paired$user_id_e1)==0 & data_users_DT_paired$stationary_thresh_10_c2==TRUE & data_users_DT_paired$stationary_thresh_10_e1==FALSE,]) 
+
+# Number of subscribers stationary in e1 but not c2
+c2 <- nrow(data_users_DT_paired[is.na(data_users_DT_paired$user_id_c2)==0 & is.na(data_users_DT_paired$user_id_e1)==0 & data_users_DT_paired$stationary_thresh_10_c2==FALSE & data_users_DT_paired$stationary_thresh_10_e1==TRUE,]) 
+
+# Number of subscribers stattionary in neither c2 nor e1
+d2 <- nrow(data_users_DT_paired[is.na(data_users_DT_paired$user_id_c2)==0 & is.na(data_users_DT_paired$user_id_e1)==0 & data_users_DT_paired$stationary_thresh_10_c2==FALSE & data_users_DT_paired$stationary_thresh_10_e1==FALSE,]) 
+
+text_matrix_c2 <- matrix(c(a2,b2,c2,d2),2,2, byrow = TRUE)
+mcnemar.test(text_matrix_c2)
+b2/c2
+
+#### McNemar's test of paired proportions: C1 vs C2 ####
+
+# Number of people who were statnionary in c1 and c2
+a3 <- nrow(data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_c2)==0 & data_users_DT_paired$stationary_thresh_10_c1==TRUE & data_users_DT_paired$stationary_thresh_10_c2==TRUE,]) 
+
+# Number of subscribers stationary in c1 but not c2
+b3 <- nrow(data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_c2)==0 & data_users_DT_paired$stationary_thresh_10_c1==TRUE & data_users_DT_paired$stationary_thresh_10_c2==FALSE,]) 
+
+# Number of subscribers stationary in c2 but not c1
+c3 <- nrow(data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_c2)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE & data_users_DT_paired$stationary_thresh_10_c2==TRUE,]) 
+
+# Number of subscribers stattionary in neither c1 nor c2
+d3 <- nrow(data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_c2)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE & data_users_DT_paired$stationary_thresh_10_c2==FALSE,]) 
+
+text_matrix_c3 <- matrix(c(a3,b3,c3,d3),2,2, byrow = TRUE)
+mcnemar.test(text_matrix_c3)
+b3/c3
+
+#### Calculate differences in sum inter-tower distance traveled ####
+data_users_DT_paired$diff_c1_e1 <- NA
+data_users_DT_paired$diff_c2_e1 <- NA
+data_users_DT_paired$diff_c1_c2 <- NA
+
+data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_e1)==0,"diff_c1_e1"] <- data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_e1)==0, "distance_thresh_10_c1"] - data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_e1)==0, "distance_thresh_10_e1"]
+
+data_users_DT_paired[is.na(data_users_DT_paired$user_id_c2)==0 & is.na(data_users_DT_paired$user_id_e1)==0,"diff_c2_e1"] <- data_users_DT_paired[is.na(data_users_DT_paired$user_id_c2)==0 & is.na(data_users_DT_paired$user_id_e1)==0, "distance_thresh_10_c2"] - data_users_DT_paired[is.na(data_users_DT_paired$user_id_c2)==0 & is.na(data_users_DT_paired$user_id_e1)==0, "distance_thresh_10_e1"]
+
+data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_c2)==0,"diff_c1_c2"] <- data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_c2)==0, "distance_thresh_10_c1"] - data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_c2)==0, "distance_thresh_10_c2"]
+
+#### Paired t-test of differences in sum inter-tower distance traveled ####
+mean(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1)==0,"diff_c1_e1"])
+summary(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1)==0,"diff_c1_e1"])
+
+# Using all subscribers
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1)==0,"distance_thresh_10_c1"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1)==0,"distance_thresh_10_e1"], paired=T)
+
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c2_e1)==0,"distance_thresh_10_c2"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c2_e1)==0,"distance_thresh_10_e1"], paired=T)
+
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_c2)==0,"distance_thresh_10_c1"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_c2)==0,"distance_thresh_10_c2"], paired=T)
+
+# Using only subscribers mobile in at least one window
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE | data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_thresh_10_c1"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE | data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_thresh_10_e1"], paired=T)
+
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c2_e1)==0 & data_users_DT_paired$stationary_thresh_10_c2==FALSE | data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_thresh_10_c2"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c2_e1)==0 & data_users_DT_paired$stationary_thresh_10_c2==FALSE | data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_thresh_10_e1"], paired=T)
+
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_c2)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE | data_users_DT_paired$stationary_thresh_10_c2==FALSE,"distance_thresh_10_c1"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_c2)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE | data_users_DT_paired$stationary_thresh_10_c2==FALSE,"distance_thresh_10_c2"], paired=T)
+
+# Using only subscribers mobile in both windows
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE & data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_thresh_10_c1"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE & data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_thresh_10_e1"], paired=T)
+
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c2_e1)==0 & data_users_DT_paired$stationary_thresh_10_c2==FALSE & data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_thresh_10_c2"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c2_e1)==0 & data_users_DT_paired$stationary_thresh_10_c2==FALSE & data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_thresh_10_e1"], paired=T)
+
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_c2)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE & data_users_DT_paired$stationary_thresh_10_c2==FALSE,"distance_thresh_10_c1"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_c2)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE & data_users_DT_paired$stationary_thresh_10_c2==FALSE,"distance_thresh_10_c2"], paired=T)
+
+#### Calculate differences in convex-hull distance traveled ####
+data_users_DT_paired$diff_c1_e1_ch <- NA
+data_users_DT_paired$diff_c2_e1_ch <- NA
+data_users_DT_paired$diff_c1_c2_ch <- NA
+
+data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_e1)==0,"diff_c1_e1_ch"] <- data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_e1)==0, "distance_ch_c1"] - data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_e1)==0, "distance_ch_e1"]
+
+data_users_DT_paired[is.na(data_users_DT_paired$user_id_c2)==0 & is.na(data_users_DT_paired$user_id_e1)==0,"diff_c2_e1_ch"] <- data_users_DT_paired[is.na(data_users_DT_paired$user_id_c2)==0 & is.na(data_users_DT_paired$user_id_e1)==0, "distance_ch_c2"] - data_users_DT_paired[is.na(data_users_DT_paired$user_id_c2)==0 & is.na(data_users_DT_paired$user_id_e1)==0, "distance_ch_e1"]
+
+data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_c2)==0,"diff_c1_c2_ch"] <- data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_c2)==0, "distance_ch_c1"] - data_users_DT_paired[is.na(data_users_DT_paired$user_id)==0 & is.na(data_users_DT_paired$user_id_c2)==0, "distance_ch_c2"]
+
+#### Paired t-test of differences in convex-hull distance traveled ####
+mean(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1_ch)==0,"diff_c1_e1_ch"])
+summary(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1_ch)==0,"diff_c1_e1_ch"])
+
+# Using all subscribers
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1_ch)==0,"distance_ch_c1"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1_ch)==0,"distance_ch_e1"], paired=T)
+
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c2_e1_ch)==0,"distance_ch_c2"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c2_e1_ch)==0,"distance_ch_e1"], paired=T)
+
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_c2_ch)==0,"distance_ch_c1"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_c2_ch)==0,"distance_ch_c2"], paired=T)
+
+# Using only subscribers mobile in at least one window
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1_ch)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE | data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_ch_c1"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1_ch)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE | data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_ch_e1"], paired=T)
+
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c2_e1_ch)==0 & data_users_DT_paired$stationary_thresh_10_c2==FALSE | data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_ch_c2"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c2_e1_ch)==0 & data_users_DT_paired$stationary_thresh_10_c2==FALSE | data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_ch_e1"], paired=T)
+
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_c2_ch)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE | data_users_DT_paired$stationary_thresh_10_c2==FALSE,"distance_ch_c1"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_c2_ch)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE | data_users_DT_paired$stationary_thresh_10_c2==FALSE,"distance_ch_c2"], paired=T)
+
+# Using only subscribers mobile in both windows
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1_ch)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE & data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_ch_c1"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_e1_ch)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE & data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_ch_e1"], paired=T)
+
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c2_e1_ch)==0 & data_users_DT_paired$stationary_thresh_10_c2==FALSE & data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_ch_c2"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c2_e1_ch)==0 & data_users_DT_paired$stationary_thresh_10_c2==FALSE & data_users_DT_paired$stationary_thresh_10_e1==FALSE,"distance_ch_e1"], paired=T)
+
+t.test(data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_c2_ch)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE & data_users_DT_paired$stationary_thresh_10_c2==FALSE,"distance_ch_c1"], data_users_DT_paired[is.na(data_users_DT_paired$diff_c1_c2_ch)==0 & data_users_DT_paired$stationary_thresh_10_c1==FALSE & data_users_DT_paired$stationary_thresh_10_c2==FALSE,"distance_ch_c2"], paired=T)
+
+#### Function lookup ####
+fcn_lookup <- function(query_1, query_2 = NA, reference, value_column, transformation = "none"){
+  out <- 0
+  reference <- data.frame(reference)
+  if (is.na(query_2)==0){
+    row_1 <- which(reference[,1] %in% query_1) 
+    row_2 <- which(reference[,2] %in% query_2)
+    if (length(row_1) > 0 & length(row_2) > 0){
+      out <- value_column[intersect(row_1, row_2)]
+    }
+  } else {
+    out <- value_column[which(reference == query_1)]
+  }
+  if (length(out)==1){
+    if (transformation == "as.character"){
+      return(as.character(out))
+    } else {return(out)}
+  } else {
+    return(0)
+  }
+}
+
+#### Locate a home location for each user ####
+data_users_DT_paired$home_tower <- NA
+
+fcn_find_home_tower <- function(tower_list_1, tower_list_2, tower_list_3){
+  if (is.list(tower_list_1)==0){tower_list_1 <- list()}
+  if (is.list(tower_list_2)==0){tower_list_2 <- list()}
+  if (is.list(tower_list_3)==0){tower_list_3 <- list()}
+  
+  master_list <- c(unlist(tower_list_1), unlist(tower_list_2), unlist(tower_list_3))
+  return(names(sort(table(master_list)))[1])
+}
+
+data_users_DT_paired$home_tower <- apply(data_users_DT_paired, 1, function(x) fcn_find_home_tower(x["cell_ids_c1"], x["cell_ids_e1"], x["cell_ids_c2"]))
+
+data_users_DT_paired$home_tower <- as.numeric(data_users_DT_paired$home_tower)
+
+# Find Home Chiefdom
+data_users_DT_paired$home_chiefdom <- NA
+
+data_users_DT_paired$home_chiefdom <- sapply(data_users_DT_paired$home_tower, function(x) fcn_lookup(query_1 = x, reference = towers_loc$CellID, value_column = towers_loc$admin3))
+
+# Collapse Western Area into two districts
+data_users_DT_paired[data_users_DT_paired$home_chiefdom >=4200, "home_chiefdom"] <- 4299
+data_users_DT_paired[data_users_DT_paired$home_chiefdom >=4100 & data_users_DT_paired$home_chiefdom < 4200, "home_chiefdom"] <- 4199
+
+data_users_DT_paired$home_district <- sapply(data_users_DT_paired$home_tower, function(x) fcn_lookup(query_1 = x, reference = towers_loc$CellID, value_column = towers_loc$admin2))
+
+# Move city towers into their chiefdoms
+data_users_DT_paired[data_users_DT_paired$home_chiefdom == 1291, "home_chiefdom"] <- 1212
+data_users_DT_paired[data_users_DT_paired$home_chiefdom == 1391, "home_chiefdom"] <- 1304
+data_users_DT_paired[data_users_DT_paired$home_chiefdom == 2191, "home_chiefdom"] <- 2102
+  
+#### Summarize effect size by chiefdom ####
+chiefdom_data <- data.frame(CHCODE = sort(unique(data_users_DT_paired$home_chiefdom)))
+chiefdom_data$DCODE <- round(chiefdom_data$CHCODE, -2)/100
+chiefdom_data$users <- sapply(chiefdom_data$CHCODE, function(x) sum(data_users_DT_paired$home_chiefdom == x))
+
+chiefdom_data$distance_thresh_10_c1 <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$distance_thresh_10_c1)==0, "distance_thresh_10_c1"]))
+chiefdom_data$distance_thresh_10_e1 <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$distance_thresh_10_e1)==0,"distance_thresh_10_e1"]))
+chiefdom_data$distance_thresh_10_c2 <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$distance_thresh_10_c2)==0,"distance_thresh_10_c2"]))
+
+chiefdom_data$stationary_thresh_10_c1 <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$stationary_thresh_10_c1)==0,"stationary_thresh_10_c1"]))
+chiefdom_data$stationary_thresh_10_e1 <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$stationary_thresh_10_e1)==0,"stationary_thresh_10_e1"]))
+chiefdom_data$stationary_thresh_10_c2 <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$stationary_thresh_10_c2)==0,"stationary_thresh_10_c2"]))
+
+chiefdom_data$distance_ch_c1 <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$distance_ch_c1)==0,"distance_ch_c1"]))
+chiefdom_data$distance_ch_e1 <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$distance_ch_e1)==0,"distance_ch_e1"]))
+chiefdom_data$distance_ch_c2 <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$distance_ch_c2)==0,"distance_ch_c2"]))
+
+chiefdom_data$distance_ch_c1 <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$distance_ch_c1)==0,"distance_ch_c1"]))
+chiefdom_data$distance_ch_e1 <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$distance_ch_e1)==0,"distance_ch_e1"]))
+chiefdom_data$distance_ch_c2 <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$distance_ch_c2)==0,"distance_ch_c2"]))
+
+chiefdom_data$diff_c1_e1 <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$diff_c1_e1)==0,"diff_c1_e1"]))
+chiefdom_data$diff_c2_e1 <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$diff_c2_e1)==0,"diff_c2_e1"]))
+chiefdom_data$diff_c1_c2 <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$diff_c1_c2)==0,"diff_c1_c2"]))
+
+chiefdom_data$diff_c1_e1_ch <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$diff_c1_e1_ch)==0,"diff_c1_e1_ch"]))
+chiefdom_data$diff_c2_e1_ch <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$diff_c2_e1_ch)==0,"diff_c2_e1_ch"]))
+chiefdom_data$diff_c1_c2_ch <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$diff_c1_c2_ch)==0,"diff_c1_c2_ch"]))
+
+chiefdom_data$percent_reduction_c1_e1 <- (chiefdom_data$distance_thresh_10_c1 - chiefdom_data$distance_thresh_10_e1)/chiefdom_data$distance_thresh_10_c1
+chiefdom_data$percent_reduction_c2_e1 <- (chiefdom_data$distance_thresh_10_c2 - chiefdom_data$distance_thresh_10_e1)/chiefdom_data$distance_thresh_10_c2
+
+chiefdom_data$percent_reduction_c1_e1_ch <- (chiefdom_data$distance_ch_c1 - chiefdom_data$distance_ch_e1) / chiefdom_data$distance_ch_c1
+chiefdom_data$percent_reduction_c2_e1_ch <- (chiefdom_data$distance_ch_c2 - chiefdom_data$distance_ch_e1) / chiefdom_data$distance_ch_c2
+
+#### Summarize effect size by district ####
+district_data <- data.frame(DCODE = sort(unique(towers_loc$admin2)))
+district_data$users <- sapply(district_data$DCODE, function(x) length(data_users_DT_paired[data_users_DT_paired$home_district == x,"home_district"]))
+
+district_data$distance_thresh_10_c1 <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$distance_thresh_10_c1)==0,"distance_thresh_10_c1"]))
+district_data$distance_thresh_10_e1 <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$distance_thresh_10_e1)==0,"distance_thresh_10_e1"]))
+district_data$distance_thresh_10_c2 <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$distance_thresh_10_c2)==0,"distance_thresh_10_c2"]))
+
+district_data$stationary_thresh_10_c1 <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$stationary_thresh_10_c1)==0,"stationary_thresh_10_c1"]))
+district_data$stationary_thresh_10_e1 <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$stationary_thresh_10_e1)==0,"stationary_thresh_10_e1"]))
+district_data$stationary_thresh_10_c2 <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$stationary_thresh_10_c2)==0,"stationary_thresh_10_c2"]))
+
+district_data$distance_ch_c1 <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$distance_ch_c1)==0,"distance_ch_c1"]))
+district_data$distance_ch_e1 <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$distance_ch_e1)==0,"distance_ch_e1"]))
+district_data$distance_ch_c2 <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$distance_ch_c2)==0,"distance_ch_c2"]))
+
+district_data$distance_ch_c1 <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$distance_ch_c1)==0,"distance_ch_c1"]))
+district_data$distance_ch_e1 <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$distance_ch_e1)==0,"distance_ch_e1"]))
+district_data$distance_ch_c2 <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$distance_ch_c2)==0,"distance_ch_c2"]))
+
+district_data$diff_c1_e1 <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$diff_c1_e1)==0,"diff_c1_e1"]))
+district_data$diff_c2_e1 <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$diff_c2_e1)==0,"diff_c2_e1"]))
+district_data$diff_c1_c2 <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$diff_c1_c2)==0,"diff_c1_c2"]))
+
+district_data$diff_c1_e1_ch <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$diff_c1_e1_ch)==0,"diff_c1_e1_ch"]))
+district_data$diff_c2_e1_ch <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$diff_c2_e1_ch)==0,"diff_c2_e1_ch"]))
+district_data$diff_c1_c2_ch <- sapply(district_data$DCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_district == x & is.na(data_users_DT_paired$diff_c1_c2_ch)==0,"diff_c1_c2_ch"]))
+
+district_data$percent_reduction_c1_e1 <- (district_data$distance_thresh_10_c1 - district_data$distance_thresh_10_e1)/district_data$distance_thresh_10_c1
+district_data$percent_reduction_c2_e1 <- (district_data$distance_thresh_10_c2 - district_data$distance_thresh_10_e1)/district_data$distance_thresh_10_c2
+
+district_data$percent_reduction_c1_e1_ch <- (district_data$distance_ch_c1 - district_data$distance_ch_e1) / district_data$distance_ch_c1
+district_data$percent_reduction_c2_e1_ch <- (district_data$distance_ch_c2 - district_data$distance_ch_e1) / district_data$distance_ch_c2
+
+#### Export chiefdom data for ArcGIS ####
+write.csv(chiefdom_data, "/Users/peakcm/Documents/SLE_Mobility/NSAHD_Analysis_paired_data_chiefdom.csv")
+write.csv(district_data, "/Users/peakcm/Documents/SLE_Mobility/NSAHD_Analysis_paired_data_district.csv")
+
+#### Compare effect size by population size ####
+chiefdom_data$pop <- sapply(chiefdom_data$CHCODE, function(x) pop[pop$CHCODE == x, "Total2014Inferred"])
+
+# c1 vs e1
+rho_c1 <- cor.test(log(as.numeric(chiefdom_data$pop)), chiefdom_data$percent_reduction_c1_e1 , method = "pearson")
+
+plot_c1 <- ggplot(chiefdom_data, aes(x = log10(as.numeric(pop)), y = percent_reduction_c1_e1)) + 
+  theme_bw() +
+  geom_point() +
+  geom_smooth(method=lm) +
+  scale_x_continuous(breaks = c(4, 5, 6), labels = c("10,000","100,000", "1,000,000"), name = "Chiefdom Population Size") +
+  scale_y_continuous(limits = c(0,1), breaks = c(0, .25, .5, .75, 1), labels = c("0%","25%", "50%", "75%", "100%"), name = "Reduction in Travel") +
+  annotate("text", x = log10(400000), y = 0.25, label = c("Spearman's rho = 0.31 [0.10, 0.49]"), size = 2) +
+  theme(text = element_text(size=8))
+
+pdf(file= "/Users/peakcm/Documents/SLE_Mobility/Results/Crossover Analysis/20160922_scatter_c1.pdf", width = 4, height = 2)
+plot(plot_c1)
+dev.off()
+
+# c2 vs e1
+rho_c2 <- cor.test(log(as.numeric(chiefdom_data$pop)), chiefdom_data$percent_reduction_c2_e1 , method = "pearson")
+
+plot_c2 <- ggplot(chiefdom_data, aes(x = log10(as.numeric(pop)), y = percent_reduction_c2_e1)) + 
+  theme_bw() +
+  geom_point() +
+  geom_smooth(method=lm) +
+  scale_x_continuous( breaks = c(4, 5, 6), labels = c("10,000","100,000", "1,000,000"), name = "Chiefdom Population Size") +
+  scale_y_continuous(limits = c(0,1), breaks = c(0, .25, .5, .75, 1), labels = c("0%","25%", "50%", "75%", "100%"), name = "Reduction in Travel") +
+  annotate("text", x = log10(400000), y = 0.25, label = c("Spearman's rho = 0.30 [0.09, 0.49]"), size = 2) +
+  theme(text = element_text(size=8))
+
+pdf(file= "/Users/peakcm/Documents/SLE_Mobility/Results/Crossover Analysis/20160922_scatter_c2.pdf", width = 4, height = 2)
+plot(plot_c2)
+dev.off()
+
+# c1 vs e1 (removing freetown)
+rho_c1_no_free <- cor.test(log(as.numeric(chiefdom_data[chiefdom_data$CHCODE < 4200,]$pop)), chiefdom_data[chiefdom_data$CHCODE < 4200,]$percent_reduction_c1_e1 , method = "pearson")
+
+plot_c1_no_freetown <- ggplot(chiefdom_data[chiefdom_data$CHCODE < 4200,], aes(x = log10(as.numeric(pop)), y = percent_reduction_c1_e1)) + 
+  theme_bw() +
+  geom_point() +
+  geom_smooth(method=lm) +
+  scale_x_continuous(limits = c(4, 6), breaks = c(4, 5, 6), labels = c("10,000","100,000", "1,000,000"), name = "Chiefdom Population Size") +
+  scale_y_continuous(limits = c(0,1), breaks = c(0, .25, .5, .75, 1), labels = c("0%","25%", "50%", "75%", "100%"), name = "Reduction in Travel") +
+  annotate("text", x = log10(400000), y = 0.25, label = c("Spearman's rho = 0.24 [0.02, 0.44]"), size = 2) +
+  theme(text = element_text(size=8))
+
+pdf(file= "/Users/peakcm/Documents/SLE_Mobility/Results/Crossover Analysis/20160922_scatter_c1_no_freetown.pdf", width = 4, height = 2)
+plot(plot_c1_no_freetown)
+dev.off()
+
+# c2 vs e1 (removing freetown)
+rho_c2_no_free <- cor.test(log(as.numeric(chiefdom_data[chiefdom_data$CHCODE < 4200,]$pop)), chiefdom_data[chiefdom_data$CHCODE < 4200,]$percent_reduction_c2_e1 , method = "pearson")
+
+plot_c2_no_freetown <- ggplot(chiefdom_data[chiefdom_data$CHCODE < 4200,], aes(x = log10(as.numeric(pop)), y = percent_reduction_c2_e1)) + 
+  theme_bw() +
+  geom_point() +
+  geom_smooth(method=lm) +
+  scale_x_continuous(limits = c(4, 6),breaks = c(4, 5, 6), labels = c("10,000","100,000", "1,000,000"), name = "Chiefdom Population Size") +
+  scale_y_continuous(limits = c(0,1), breaks = c(0, .25, .5, .75, 1), labels = c("0%","25%", "50%", "75%", "100%"), name = "Reduction in Travel") +
+  annotate("text", x = log10(400000), y = 0.25, label = c("Spearman's rho = 0.23 [0.015, 0.43]"), size = 2) +
+  theme(text = element_text(size=8))
+
+pdf(file= "/Users/peakcm/Documents/SLE_Mobility/Results/Crossover Analysis/20160922_scatter_c2_no_freetown.pdf", width = 4, height = 2)
+plot(plot_c2_no_freetown)
+dev.off()
+
+plot(log(as.numeric(chiefdom_data$pop)), chiefdom_data$percent_reduction_c1_e1)
+plot(log(as.numeric(chiefdom_data$pop)), chiefdom_data$percent_reduction_c2_e1)
+
+chiefdom_data$diff_c1_c2_ch <- sapply(chiefdom_data$CHCODE, function(x) mean(data_users_DT_paired[data_users_DT_paired$home_chiefdom == x & is.na(data_users_DT_paired$diff_c1_c2_ch)==0,"diff_c1_c2_ch"]))
+
